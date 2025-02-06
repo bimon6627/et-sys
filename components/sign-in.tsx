@@ -1,5 +1,5 @@
 import navigationAuth from "@/app/data/navigation-authorized";
-import { signIn } from "@/auth"
+import { signIn } from "@/auth";
 import React from "react";
 
 interface SignInProps {

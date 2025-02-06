@@ -1,6 +1,6 @@
 const navigation = [
     {name: 'Hjem', link: '/'},
-    {name: 'Om Systemet', link: '/pages/om-systemet'},
+    {name: 'Om Systemet', link: '/om-systemet'},
     {name: 'elevtinget.no', link: 'https://elevtinget.no'},
 ];
 

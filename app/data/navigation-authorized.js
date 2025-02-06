@@ -1,4 +1,4 @@
-const src = '/pages-authorized/'
+const src = '/dashboard/'
 
 const navigationAuth = [
     {name: 'Hjem', link: src},

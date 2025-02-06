@@ -28,7 +28,7 @@ export default function Home() {
                 <div className="rounded-full bg-background p-1"><RoundedImage src="/assets/Google.png" alt="Google logo" height={30} width={30}/></div>
                 <SignIn text="Logg inn med Google" className="font-semibold"/>
               </a>
-              <a href="/pages-authorized/" className="text-center hover:underline hover:text-eo-gray">Allerede logget inn?</a>
+              <a href="/dashboard/" className="text-center hover:underline hover:text-eo-gray">Allerede logget inn?</a>
             </div>
 
             <div className="flex flex-col rounded-3xl bg-[#FFE0D9] space-y-3 w-1/2 p-10">
