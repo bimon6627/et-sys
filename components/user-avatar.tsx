@@ -1,8 +1,10 @@
 import RoundedImage from "./rounded-image";
-import GetUserAvatarSrc from "./js/get-user-avatar-src";
+import GetUserInfo from "./js/get-user-info";
 export default async function UserAvatar() {
-  const avatarSrc = await GetUserAvatarSrc();
-  console.log(avatarSrc);
+  const user = await GetUserInfo();
+  const avatarSrc = user?.image ?? "../assets/default-profile.png";
 
-  return <RoundedImage src={avatarSrc} alt="User avatar" height={35} width={35} />;
+  return (
+    <RoundedImage src={avatarSrc} alt="User avatar" height={100} width={100} />
+  );
 }
