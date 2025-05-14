@@ -7,9 +7,59 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model User {
+model Whitelist {
   id       Int      @id @default(autoincrement())
   email    String   @unique
-  role     String
-  name     String?
+  role     Role
+}
+
+model FormReply {
+  id              Int              @id @default(autoincrement())
+  name            String
+  email           String
+  tel             Int
+  county          String
+  type            ParticipantType
+  participant_id  Int
+  from            DateTime
+  to              DateTime
+  reason          String
+
+  has_observer    Boolean?
+  observer_name   String?
+  observer_id     Int?
+  observer_tel    Int?
+
+  case            Case?           @relation("FormReplyToCase")
+}
+
+model Case {
+  id              Int               @id @default(autoincrement())
+  formReplyId     Int               @unique
+  formReply       FormReply         @relation("FormReplyToCase", fields: [formReplyId], references: [id])
+  id_swapped      Boolean
+  status          Boolean
+  reason_rejected String
+  comment         String
+  reviewedById    Int
+  reviewedBy      String
+  reviewedAt      DateTime
+}
+
+model Config {
+  id    Int  @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+enum Role {
+  ADMIN
+  KONKOM
+  SEK
+  SST
+}
+
+enum ParticipantType {
+  DELEGATE
+  OBSERVER
 }

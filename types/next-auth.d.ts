@@ -1,32 +1,24 @@
-// types/next-auth.d.ts
-import { Session } from "next-auth";
-import { User as AdapterUser } from "next-auth/adapters";
+import { User as NextAuthUser } from "next-auth";
+import { Session as NextAuthSession } from "next-auth";
 
+// Extending the NextAuth `User` type to include `role`
 declare module "next-auth" {
-  // Extend the Session type
+  interface User {
+    role: string; // You can be more specific here by using your `Role` enum
+  }
+
   interface Session {
     user: {
-      id: string;
-      firstname: string;
-      lastname: string;
-      email: string;
-      image: string;
       name: string;
-    } & AdapterUser; // Allow AdapterUser fields
+      image: string;
+      given_name: string;
+      family_name: string;
+      email: string;
+      role: string;
+    };
   }
-
-  // Extend the User type
-  interface User {
-    id: string;
-    firstname: string;
-    lastname: string;
-  }
-}
-
-declare module "next-auth/jwt" {
   interface JWT {
-    sub: string;
-    firstname: string;
-    lastname: string;
+    role: string;
+    email: string;
   }
 }

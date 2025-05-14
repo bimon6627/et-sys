@@ -1,64 +1,64 @@
 import NextAuth from "next-auth";
-import Google, { GoogleProfile } from "next-auth/providers/google";
+import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
+import { prisma } from "./lib/prisma";
 
 const config: NextAuthConfig = {
   providers: [
     Google({
       clientId: process.env.GOOGLE_ID as string,
       clientSecret: process.env.GOOGLE_SECRET as string,
-
-      profile: (profile: GoogleProfile) => {
-        return {
-          ...profile,
-          id: profile.sub,
-          name: profile.name,
-          firstname: profile.given_name ?? profile.name.split(" ")[0],
-          lastname: profile.family_name ?? profile.name.split(" ")[-1],
-          email: profile.email,
-          image: profile.picture,
-        };
-      },
     }),
   ],
   pages: {
     signIn: "/",
   },
   callbacks: {
-    authorized({ request, auth }) {
-      const { pathname } = request.nextUrl;
-      if (pathname.includes("/dashboard")) return !!auth;
-      {
-        return true;
-      }
-    },
+    // This callback runs when the JWT is created or updated
+    async jwt({ token, user }) {
+      // If the user is logging in for the first time (user is available)
+      if (user) {
+        // Fetch the user role from your database
+        const userRecord = await prisma.whitelist.findUnique({
+          where: { email: user.email as string },
+        });
 
-    async signIn({ profile }) {
-      const allowedDomain = "elev.no";
-      const emailDomain = profile?.email?.split("@")[1];
-      if (emailDomain != allowedDomain) {
-        return "/unauthorized";
-      } else {
-        return true;
-      }
-    },
-
-    async jwt({ token, profile }) {
-      if (profile) {
-        token.sub = profile.sub ?? "";
-        token.firstname = profile.given_name ?? "";
-        token.lastname = profile.family_name ?? "";
+        if (userRecord) {
+          // Attach the role to the JWT token
+          token.role = userRecord.role;
+          token.email = userRecord.email;
+        }
       }
       return token;
     },
 
+    // This callback runs when the session is created or accessed
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub as string;
-        session.user.firstname = token.firstname as string;
-        session.user.lastname = token.lastname as string;
+      // Attach the role and email from the token to the session
+      if (token) {
+        session.user.role = token.role as string; // Attach role from token to session
+        session.user.email = token.email as string; // Attach email from token to session
       }
       return session;
+    },
+
+    async signIn({ profile }) {
+      const unauthorized = "/unauthorized";
+      if (!profile) return unauthorized;
+
+      // Check if the user's email is in the whitelist
+      const user = await prisma.whitelist.findUnique({
+        where: { email: profile.email as string },
+      });
+
+      return !!user || unauthorized; // Return true if user is in whitelist, else redirect to unauthorized
+    },
+
+    // Check if the user is authorized to view certain pages
+    authorized({ request, auth }) {
+      const { pathname } = request.nextUrl;
+      if (pathname.includes("/dashboard")) return !!auth; // Only allow access to dashboard if user is authenticated
+      return true;
     },
   },
 } satisfies NextAuthConfig;
