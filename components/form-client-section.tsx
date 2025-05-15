@@ -69,8 +69,6 @@ export default function FormClientSection({}: FormClientSectionProps) {
     validateForm();
   }, [form]);
 
-  const [errors, setErrors] = useState({});
-
   const validateForm = () => {
     let has_observer = form.has_observer && form.type == "DELEGATE";
     const idValid = /^\d{1,4}$/.test(form.id);
