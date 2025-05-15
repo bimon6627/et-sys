@@ -5,6 +5,10 @@ export default async function UserAvatar() {
   const avatarSrc = user?.image ?? "../assets/default-profile.png";
 
   return (
-    <RoundedImage src={avatarSrc} alt="User avatar" height={100} width={100} />
+    <RoundedImage
+      src={avatarSrc}
+      alt="User avatar"
+      className="w-6 h-6 md:w-12 md:h-12"
+    />
   );
 }

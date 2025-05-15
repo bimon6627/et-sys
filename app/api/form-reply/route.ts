@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma"; // import your Prisma client
 export async function POST(req: Request, res: Response) {
   try {
     const body = await req.json();
-    console.log("REQUEST:", body);
     const {
       type,
       id,
@@ -64,6 +63,23 @@ export async function POST(req: Request, res: Response) {
         observer_name: observer_name,
         observer_id: parseInt(observer_id),
         observer_tel: parseInt(observer_tel),
+      },
+    });
+
+    const newCase = await prisma.case.create({
+      data: {
+        formReply: {
+          connect: {
+            id: newFormSubmission.id,
+          },
+        },
+        id_swapped: false,
+        status: false,
+        reason_rejected: "",
+        comment: "",
+        reviewedById: 0,
+        reviewedBy: "",
+        reviewedAt: new Date("0"),
       },
     });
 
