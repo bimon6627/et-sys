@@ -17,7 +17,7 @@ export default async function NavbarAuthorized() {
   const role = user.role;
 
   return (
-    <nav className="flex flex-col gap-2 min-h-screen bg-gray-100 p-2">
+    <nav className="sticky flex flex-col gap-2 top-0 h-screen bg-gray-100 p-2">
       <div className="flex flex-col border-b py-2 gap-2">
         <a
           href="/dashboard"
@@ -57,7 +57,7 @@ export default async function NavbarAuthorized() {
           Innstillinger
         </a>
         <a
-          href="/dashboard"
+          href="/dashboard/admin"
           className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiShield />
@@ -80,10 +80,7 @@ export default async function NavbarAuthorized() {
           </div>
         </div>
 
-        <SignOut
-          text="Logg ut"
-          className="text-gray-700 hover:bg-gray-200 w-full hover:text-gray-900 pl-1 pr-2 py-1 rounded transition-colors"
-        />
+        <SignOut />
       </div>
     </nav>
   );

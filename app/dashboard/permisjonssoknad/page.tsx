@@ -2,8 +2,13 @@ import React from "react";
 import GetUserInfo from "@/components/js/get-user-info";
 import NavbarAuthorized from "@/components/authorized-navbar";
 import FormClientSection from "@/components/form-client-section";
+import { Metadata } from "next";
 
-export default async function Dashboard() {
+export const metadata: Metadata = {
+  title: "Søknadsskjema",
+};
+
+export default async function AuthFormPage() {
   const user = await GetUserInfo();
   return (
     <div className="min-w-screen min-h-screen flex flex-row">

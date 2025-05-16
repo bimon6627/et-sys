@@ -17,18 +17,18 @@ model FormReply {
   id              Int              @id @default(autoincrement())
   name            String
   email           String
-  tel             Int
+  tel             String
   county          String
   type            ParticipantType
-  participant_id  Int
+  participant_id  String
   from            DateTime
   to              DateTime
   reason          String
 
   has_observer    Boolean?
   observer_name   String?
-  observer_id     Int?
-  observer_tel    Int?
+  observer_id     String?
+  observer_tel    String?
 
   case            Case?           @relation("FormReplyToCase")
 }

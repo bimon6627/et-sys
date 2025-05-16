@@ -34,15 +34,19 @@ export async function POST(req: Request, res: Response) {
     }
     const startDate = new Date(configEntry.value);
     const fromDate = new Date(startDate);
-    fromDate.setDate(startDate.getDate() + from_day);
+    fromDate.setDate(startDate.getDate() + parseInt(from_day));
     const [fromHours, fromMinutes] = from_time.split(":").map(Number);
     fromDate.setHours(fromHours, fromMinutes, 0, 0); // set HH:MM:SS:MS
+    console.log(configEntry.value);
+    console.log(startDate.toString());
+    console.log(fromDate.toString());
+    console.log(from_day);
 
     const toDate = new Date(startDate);
     if (not_returning) {
-      toDate.setDate(startDate.getDate() + 100);
+      toDate.setDate(startDate.getDate() + 6);
     } else {
-      toDate.setDate(startDate.getDate() + to_day);
+      toDate.setDate(startDate.getDate() + parseInt(to_day));
       const [toHours, toMinutes] = to_time.split(":").map(Number);
       toDate.setHours(toHours, toMinutes, 0, 0); // set HH:MM:SS:MS
     }
@@ -51,18 +55,18 @@ export async function POST(req: Request, res: Response) {
       data: {
         name: name,
         email: email,
-        tel: parseInt(tel),
+        tel: tel,
         county: county,
         type: type,
-        participant_id: parseInt(id),
+        participant_id: id,
         from: fromDate,
         to: toDate,
         reason: reason,
 
         has_observer: has_observer,
         observer_name: observer_name,
-        observer_id: parseInt(observer_id),
-        observer_tel: parseInt(observer_tel),
+        observer_id: observer_id,
+        observer_tel: observer_tel,
       },
     });
 

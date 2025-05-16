@@ -1,32 +1,30 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma"; // Make sure the path is correct
 
 export default auth(async (req) => {
-  // req.auth contains the session and token
   const session = await req.auth;
-  const kkPages = ["/dashboard/soknader"];
-  const isKKPage = req.nextUrl.pathname in kkPages;
-  const isAdminPage = req.nextUrl.pathname.startsWith("/dashboard/admin");
+  const { pathname } = req.nextUrl;
 
-  if (isKKPage) {
+  // Protect all /dashboard routes
+  if (pathname.startsWith("/dashboard")) {
     if (!session?.user?.email) {
-      return NextResponse.redirect(new URL("/unauthorized", req.url));
-    } else {
-      const role = await prisma.whitelist.findUnique({
-        where: { email: session.user.email },
-      });
+      return NextResponse.redirect(new URL("/", req.url)); // Redirect to sign-in page
+    }
 
-      if (role !== "KONKOM" && role !== "ADMIN") {
+    // Additional check: /dashboard/soknader requires KONKOM or ADMIN
+    if (pathname === "/dashboard/soknader") {
+      if (session?.user?.role !== "KONKOM" && session?.user?.role !== "ADMIN") {
         return NextResponse.redirect(new URL("/unauthorized", req.url));
       }
     }
+
+    // You can add more route-specific logic here if needed
   }
 
-  // If the path is not /dashboard/admin, or the user is an admin accessing it, allow access
   return NextResponse.next();
 });
 
-// Optionally, configure the matcher for specific paths
 export const config = {
   matcher: ["/dashboard/:path*"],
 };
