@@ -11,8 +11,6 @@ import getStatusSymbol from "./status-symbol";
 import { useEffect, useState } from "react";
 import GetCaseStatus from "./ts/get-case-status";
 
-interface FormClientSectionProps {}
-
 interface CaseDialogProps {
   open: boolean;
   data: CaseWithFormReply;
