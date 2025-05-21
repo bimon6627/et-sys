@@ -78,7 +78,7 @@ export async function POST(req: Request, res: Response) {
           },
         },
         id_swapped: false,
-        status: false,
+        status: null,
         reason_rejected: "",
         comment: "",
         reviewedById: 0,

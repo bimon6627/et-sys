@@ -49,7 +49,7 @@ export default function Home() {
               </p>
               <a
                 href="/permisjonssoknad"
-                className="flex items-center gap-1 rounded-full border border-solid border-transparent transition-colors flex items-center justify-center cursor-pointer bg-eo-orange text-background gap-2 hover:bg-eo-lorange mx-auto text-sm md:text-base h-10 sm:h-12 px-1 sm:px-2 w-fit"
+                className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center cursor-pointer bg-eo-orange text-background gap-2 hover:bg-eo-lorange mx-auto text-sm md:text-base h-10 sm:h-12 px-1 sm:px-2 w-fit"
               >
                 <BiSolidPencil />
                 <button className="font-semibold">Søk permisjon</button>

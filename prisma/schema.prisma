@@ -38,7 +38,7 @@ model Case {
   formReplyId     Int               @unique
   formReply       FormReply         @relation("FormReplyToCase", fields: [formReplyId], references: [id])
   id_swapped      Boolean
-  status          Boolean
+  status          Boolean?
   reason_rejected String?
   comment         String?
   reviewedById    Int?

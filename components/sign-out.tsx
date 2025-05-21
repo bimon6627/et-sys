@@ -1,6 +1,6 @@
 "use client";
 import { signOut } from "next-auth/react";
-import { BiExit } from "react-icons/bi";
+import { BiExit, BiLogOut } from "react-icons/bi";
 import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function SignOut() {
@@ -16,8 +16,8 @@ export default function SignOut() {
       className={`flex items-center gap-2 text-gray-700 hover:bg-gray-200 w-full hover:text-gray-900 pl-1 pr-2 py-1 rounded transition-colors"`}
       onClick={handleSignOut}
     >
-      <BiExit />
-      Sign Out
+      <BiLogOut />
+      Logg ut
     </button>
   );
 }

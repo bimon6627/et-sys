@@ -1,13 +1,11 @@
 import React from "react";
-import UserAvatar from "@/components/user-avatar";
-import SignOut from "@/components/sign-out";
 import GetUserInfo from "@/components/js/get-user-info";
 import NavbarAuthorized from "@/components/authorized-navbar";
 
 import { PrismaClient } from "@prisma/client";
-import { BiCheckbox, BiCheckboxChecked, BiCheckSquare } from "react-icons/bi";
 import { Metadata } from "next";
 import CaseTable from "@/components/case-table";
+import NavbarAuthorizedHamburger from "@/components/authorized-navbar-hamburger";
 
 const prisma = new PrismaClient();
 
@@ -35,9 +33,10 @@ export default async function Soknader() {
   const user = GetUserInfo();
   const cases = await getAllCases();
   return (
-    <div className="bg-white min-w-screen min-h-screen flex flex-row">
+    <div className="bg-white max-w-screen min-h-screen md:flex flex-row">
+      <NavbarAuthorizedHamburger />
       <NavbarAuthorized />
-      <main className="flex flex-row flex-grow items-center justify-center w-full h-full p-6 md:p-10">
+      <main className="mx-auto w-full md:w-3/4">
         <CaseTable initialUser={user} initialCases={cases} />
       </main>
     </div>

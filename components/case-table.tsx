@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect, useRef } from "react"; // Import useEffect
-import GetUserInfo from "./js/get-user-info";
-import { BiCheckbox, BiCheckboxChecked } from "react-icons/bi";
+import { BiCheckbox, BiCheckboxChecked, BiError } from "react-icons/bi";
 import { CaseWithFormReply } from "@/types/case";
-import { PrismaClient } from "@prisma/client"; // Import PrismaClient
+import CaseDialog from "./case-dialog";
+import getStatusSymbol from "./status-symbol";
 
 interface CaseTableProps {
   initialUser: any;
@@ -12,14 +12,7 @@ interface CaseTableProps {
 
 function getDateString(inDate: Date) {
   const offset = inDate.getDay();
-  const days = [
-    "Mandag",
-    "Tirsdag",
-    "Onsdag",
-    "Torsdag",
-    "Fredag",
-    "Kommer ikke tilbake",
-  ];
+  const days = ["Man", "Tir", "Ons", "Tor", "Fre", "Kommer ikke tilbake"];
   const day = days[offset - 1];
   if (offset > 5 || offset < 1) return "Kommer ikke tilbake";
 
@@ -36,16 +29,25 @@ export default function CaseTable({
   initialCases,
 }: CaseTableProps) {
   // Make this a regular synchronous function
-  const [user, setUser] = useState(initialUser); // Adjust type as needed
   const [cases, setCases] = useState(initialCases); // Use state for cases
-  const [startDate, setStartDate] = useState<Date | null>(null);
   const [activeButton, setActiveButton] = useState("Alle");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogData, setDialogData] = useState(initialCases[0]); // State to hold the JSON object
 
   const titleRef = useRef<HTMLDivElement>(null); // Assuming your buttons are in a div
   const headerRef = useRef<HTMLTableSectionElement>(null);
   const scrollableBodyRef = useRef<HTMLDivElement>(null);
+
+  const openDialog = (caseData: CaseWithFormReply) => {
+    setDialogData(caseData);
+    setIsDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+  };
 
   useEffect(() => {
     if (initialUser === undefined) {
@@ -126,20 +128,35 @@ export default function CaseTable({
   };
 
   if (loading) {
-    return <div>Laster inn søknader...</div>;
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <h1 className="w-full my-auto text-7xl text-center font-bold">
+          Laster inn...
+        </h1>
+      </div>
+    );
   }
 
   if (error) {
-    return <div>Feil ved lasting av søknader: {error}</div>;
+    return (
+      <div className="flex items-center h-full w-full">
+        <div className="flex flex-row items-center rounded-3xl bg-yellow-400">
+          <BiError className="size-[500px]" />
+          <p className="text-5xl font-bold">
+            Feil ved lasting av søknader: {error}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col max-h-screen min-h-0">
-      <div ref={titleRef}>
+    <div className="flex flex-col max-h-screen min-h-0 max-w-full">
+      <div>
         <h1 className="text-3xl md:text-5xl font-bold text-center">
           Permisjonssøknader
         </h1>
-        <div className="flex flex-row justify-center gap-3">
+        <div className="flex flex-row justify-center gap-3 md:my-5">
           <button
             className={` ${
               activeButton === "Alle" ? "underline " : "hover:opacity-50"
@@ -192,16 +209,19 @@ export default function CaseTable({
           </button>
         </div>
       </div>
-      <div className="mb-10 border-collapse border outline-gray-400 text-center min-h-0 rounded-t-lg shadow-md flex flex-col">
-        <table className="table-auto w-full">
-          <thead ref={headerRef}>
-            <tr className="bg-eo-lblue">
+
+      <CaseDialog open={isDialogOpen} data={dialogData} onClose={closeDialog} />
+      <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-[500px] md:max-h-30 overflow-y-auto overflow-x-auto max-w-full">
+        <table className="table-fixed text-sm border-collapse">
+          <thead>
+            <tr className="bg-eo-lblue sticky top-0">
+              <th></th>
               <th className="rounded-tl-sm px-3 py-2">ID</th>
               <th className="px-3 py-2">Navn</th>
               <th className="px-3 py-2">Skiltnr.</th>
               <th className="px-3 py-2">E-post</th>
               <th className="px-3 py-2">Deltakertype</th>
-              <th className="px-3 py-2">Telefon</th>
+              <th className="px-3 py-2">Tlf.</th>
               <th className="px-3 py-2">Fylke</th>
               <th className="px-3 py-2">Fra</th>
               <th className="px-3 py-2">Til</th>
@@ -209,75 +229,73 @@ export default function CaseTable({
               <th className="px-3 py-2">Har observatør</th>
               <th className="px-3 py-2">Observatør navn</th>
               <th className="px-3 py-2">Observatør skiltnr.</th>
-              <th className="rounded-tr-sm px-3 py-2">Observatør telefon</th>
+              <th className="rounded-tr-sm px-3 py-2">Observatør tlf.</th>
             </tr>
           </thead>
+          <tbody>
+            {cases &&
+              cases
+                .filter((caseItem: CaseWithFormReply) => caseItem.formReply)
+                .map((caseItem: CaseWithFormReply) => (
+                  <tr
+                    key={caseItem.id}
+                    className="border-b transition-colors cursor-pointer odd:bg-gray-100 hover:odd:bg-white hover:text-gray-500 even:bg-[#CEDAE2] hover:even:bg-[#E7ECF0]"
+                    onClick={() => openDialog(caseItem)}
+                  >
+                    <td className="px-3 py-2 border-r-2">
+                      {getStatusSymbol(caseItem)}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">{caseItem.id}</td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.name}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.participant_id}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.email}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.type === "DELEGATE"
+                        ? "Delegat"
+                        : "Observatør"}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.tel}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.county}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {getDateString(caseItem.formReply?.from || new Date())}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {getDateString(caseItem.formReply?.to || new Date())}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.reason}
+                    </td>
+                    <td className="px-3 py-2">
+                      {caseItem.formReply?.has_observer ? (
+                        <BiCheckboxChecked className="m-auto size-6" />
+                      ) : (
+                        <BiCheckbox className="m-auto size-6" />
+                      )}
+                    </td>
+                    <td className="px-3 py-2 border-x-2">
+                      {caseItem.formReply?.observer_name}
+                    </td>
+                    <td className="px-3 py-2 border-r-2">
+                      {caseItem.formReply?.observer_id}
+                    </td>
+                    <td className="px-3 py-2">
+                      {caseItem.formReply?.observer_tel}
+                    </td>
+                  </tr>
+                ))}
+            {!cases && <p>Failed to load cases.</p>}
+          </tbody>
         </table>
-
-        {/* Scrollable Table Body */}
-        <div ref={scrollableBodyRef} className="overflow-y-auto w-full min-h-0">
-          <table className="table-auto w-full">
-            <tbody>
-              {cases &&
-                cases
-                  .filter((caseItem: CaseWithFormReply) => caseItem.formReply)
-                  .map((caseItem: CaseWithFormReply) => (
-                    <tr
-                      key={caseItem.id}
-                      className="border-b hover:opacity-50 transition-colors cursor-pointer odd:bg-gray-100 even:bg-white"
-                    >
-                      <td className="px-3 py-2 border-r-2">{caseItem.id}</td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.name}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.participant_id}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.email}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.type === "DELEGATE"
-                          ? "Delegat"
-                          : "Observatør"}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.tel}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.county}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {getDateString(caseItem.formReply?.from || new Date())}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {getDateString(caseItem.formReply?.to || new Date())}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.reason}
-                      </td>
-                      <td className="flex justify-center items-center px-3 py-2">
-                        {caseItem.formReply?.has_observer ? (
-                          <BiCheckboxChecked style={{ fontSize: "1.5em" }} />
-                        ) : (
-                          <BiCheckbox style={{ fontSize: "1.5em" }} />
-                        )}
-                      </td>
-                      <td className="px-3 py-2 border-x-2">
-                        {caseItem.formReply?.observer_name}
-                      </td>
-                      <td className="px-3 py-2 border-r-2">
-                        {caseItem.formReply?.observer_id}
-                      </td>
-                      <td className="px-3 py-2">
-                        {caseItem.formReply?.observer_tel}
-                      </td>
-                    </tr>
-                  ))}
-              {!cases && <p>Failed to load cases.</p>}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );

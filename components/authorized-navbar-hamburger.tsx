@@ -1,0 +1,44 @@
+"use client";
+
+import {
+  BiCog,
+  BiColumns,
+  BiCommentDetail,
+  BiFile,
+  BiInfoCircle,
+  BiLayout,
+  BiMenu,
+  BiMobileAlt,
+  BiPlusMedical,
+  BiShield,
+  BiUser,
+  BiX,
+} from "react-icons/bi";
+import { useState } from "react";
+import AuthorizedNavlinks from "./authorized-navlinks";
+import SignOut from "./sign-out";
+
+export default function NavbarAuthorizedHamburger() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <nav className="flex md:hidden top-0 z-20 sticky">
+      <button onClick={toggleMenu} className="hover:bg-gray-200 rounded-br-md">
+        {isOpen ? <BiX className="size-6" /> : <BiMenu className="size-6" />}
+      </button>
+      <div
+        className={`${
+          isOpen ? "block" : "hidden"
+        } absolute top-full left-0 bg-white shadow-md rounded-md z-10 w-full`}
+      >
+        <AuthorizedNavlinks />
+
+        <SignOut />
+      </div>
+    </nav>
+  );
+}
