@@ -4,7 +4,7 @@ export default function GetCaseStatus(caseData: CaseWithFormReply) {
   const caseStatus = caseData.status;
   const caseFrom = caseData.formReply?.from;
   const caseTo = caseData.formReply?.to;
-  if (!caseFrom || !caseTo) {
+  if (!caseFrom || !caseTo || caseTo < caseFrom) {
     return "ERROR";
   } else if (caseStatus === null) {
     return "PENDING";
@@ -15,7 +15,7 @@ export default function GetCaseStatus(caseData: CaseWithFormReply) {
     const now = new Date();
     if (caseTo < now) {
       return "EXPIRED";
-    } else if (caseFrom < now) {
+    } else if (caseFrom > now) {
       return "SCHEDULED";
     } else {
       return "ACTIVE";

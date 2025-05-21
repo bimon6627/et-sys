@@ -14,10 +14,10 @@ export default function getStatusSymbol(data: CaseWithFormReply) {
   switch (status) {
     case "ACTIVE":
       return (
-        <BiSolidCheckCircle className={"text-emerald-400 " + classNameString} />
+        <BiSolidCheckCircle className={"text-green-600 " + classNameString} />
       );
     case "SCHEDULED":
-      return <BiSolidTime className={"text-emerald-300 " + classNameString} />;
+      return <BiSolidTime className={"text-emerald-400 " + classNameString} />;
     case "EXPIRED":
       return (
         <BiSolidCheckCircle className={"text-gray-500 " + classNameString} />
@@ -28,7 +28,7 @@ export default function getStatusSymbol(data: CaseWithFormReply) {
       return <BiSolidXCircle className={"text-red-600 " + classNameString} />;
     case "ERROR":
       return (
-        <BiSolidErrorCircle className={"text-red-600 " + classNameString} />
+        <BiSolidErrorCircle className={"text-orange-500 " + classNameString} />
       );
   }
 }

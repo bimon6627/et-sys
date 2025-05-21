@@ -1,5 +1,3 @@
-"use client";
-
 import { CaseWithFormReply } from "@/types/case";
 import {
   Dialog,
@@ -8,36 +6,24 @@ import {
   DialogTitle,
 } from "@headlessui/react";
 import getStatusSymbol from "./status-symbol";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import GetCaseStatus from "./ts/get-case-status";
+import { useSession } from "next-auth/react";
+
+interface User {
+  name?: string | undefined;
+  image?: string | undefined;
+  given_name?: string | undefined;
+  family_name?: string | undefined;
+  email?: string | undefined;
+  role?: string | undefined;
+}
 
 interface CaseDialogProps {
   open: boolean;
   data: CaseWithFormReply;
+  user: User;
   onClose: () => void;
-}
-
-function getDayString(inDate: Date | null | undefined) {
-  if (!inDate) return "";
-  const offset = inDate.getDay();
-  // Adjust offset for Monday=0, Tuesday=1 ... Sunday=6
-  // getDay() returns 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-  const adjustedOffset = offset === 0 ? 6 : offset - 1; // Map Sunday (0) to 6 (Kommer ikke tilbake)
-  const days = [
-    "Mandag",
-    "Tirsdag",
-    "Onsdag",
-    "Torsdag",
-    "Fredag",
-    "Lørdag", // Added Saturday for completeness
-    "Søndag", // Added Sunday for completeness
-  ];
-  const day = days[adjustedOffset];
-
-  // Original logic might be for a specific business rule where only Mon-Fri are relevant
-  if (adjustedOffset > 4 || adjustedOffset < 0) return "Kommer ikke tilbake"; // Mon-Fri are 0-4
-
-  return day;
 }
 
 function getNotReturning(inDate: Date | null | undefined) {
@@ -56,7 +42,17 @@ function getTimeString(inDate: Date | null | undefined) {
   return `${formattedHours}:${formattedMinutes}`;
 }
 
-export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
+function getDayNumberAsString(inDate: Date | null | undefined) {
+  if (!inDate) return "0";
+  return (inDate.getDay() - 1).toString();
+}
+
+export default function CaseDialog({
+  open,
+  data,
+  user,
+  onClose,
+}: CaseDialogProps) {
   // It's safer to directly use data.formReply in the useEffect and useState,
   // making sure to handle the `null` possibility.
   // The `caseForm` state isn't strictly necessary if `form` is derived directly.
@@ -65,19 +61,32 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
   const [isFormValid, setIsFormValid] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  const { data: session } = useSession();
+
   // Initialize form state using a function to ensure it's fresh on first render
   // and then handled by the useEffect for subsequent data changes.
 
+  const [caseData, setCaseData] = useState(() => ({
+    id: data.id || 0,
+    id_swapped: data.id_swapped || false,
+    status: data.status?.toString() || "null",
+    reason_rejected: data.reason_rejected || "",
+    comment: data.comment,
+    reviewedById: data.reviewedById,
+    reviewedBy: data.reviewedBy,
+    reviewedAt: data.reviewedAt,
+  }));
+
   const [form, setForm] = useState(() => ({
-    id: data.formReply?.id || 0,
+    id: data.formReplyId || 0,
     type: data.formReply?.type || "",
     participant_id: data.formReply?.participant_id || "",
     name: data.formReply?.name || "",
     email: data.formReply?.email || "",
     county: data.formReply?.county || "",
-    from_day: getDayString(data.formReply?.from),
+    from_day: getDayNumberAsString(data.formReply?.from),
     from_time: getTimeString(data.formReply?.from),
-    to_day: getDayString(data.formReply?.to),
+    to_day: getDayNumberAsString(data.formReply?.to),
     to_time: getTimeString(data.formReply?.to),
     tel: data.formReply?.tel || "",
     has_observer: data.formReply?.has_observer || false,
@@ -92,15 +101,15 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
   useEffect(() => {
     if (data?.formReply) {
       setForm({
+        id: data.formReplyId || 0,
         type: data.formReply.type || "",
-        id: data.formReply.id || 0,
         participant_id: data.formReply.participant_id || "",
         name: data.formReply.name || "",
         email: data.formReply.email || "",
         county: data.formReply.county || "",
-        from_day: getDayString(data.formReply.from),
+        from_day: getDayNumberAsString(data.formReply?.from),
         from_time: getTimeString(data.formReply.from),
-        to_day: getDayString(data.formReply.to),
+        to_day: getDayNumberAsString(data.formReply?.to),
         to_time: getTimeString(data.formReply.to),
         tel: data.formReply.tel || "",
         has_observer: data.formReply.has_observer || false,
@@ -114,15 +123,15 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
       // Handle the case where formReply is null or undefined
       // You might want to reset the form to empty or a default state
       setForm({
-        type: "",
         id: 0,
+        type: "",
         participant_id: "",
         name: "",
         email: "",
         county: "",
-        from_day: "",
+        from_day: "0",
         from_time: "",
-        to_day: "",
+        to_day: "0",
         to_time: "",
         tel: "",
         has_observer: false,
@@ -131,6 +140,32 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
         observer_name: "",
         observer_id: "",
         observer_tel: "",
+      });
+    }
+  }, [data]); // Depend on 'data' prop, so this runs whenever 'data' changes
+
+  useEffect(() => {
+    if (data) {
+      setCaseData({
+        id: data.id || 0,
+        id_swapped: data.id_swapped || false,
+        status: data.status?.toString() || "null",
+        reason_rejected: data.reason_rejected || "",
+        comment: data.comment,
+        reviewedById: data.reviewedById,
+        reviewedBy: data.reviewedBy,
+        reviewedAt: data.reviewedAt,
+      });
+    } else {
+      setCaseData({
+        id: 0,
+        id_swapped: false,
+        status: "null",
+        reason_rejected: "",
+        comment: null,
+        reviewedById: null,
+        reviewedBy: null,
+        reviewedAt: null,
       });
     }
   }, [data]); // Depend on 'data' prop, so this runs whenever 'data' changes
@@ -189,6 +224,21 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
     return isValid;
   };
 
+  const handleReview = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    console.log("Im run!");
+    const { name, value, type } = e.target;
+    let newValue: string | boolean = value;
+
+    setCaseData((prev) => ({
+      ...prev,
+      [name]: newValue,
+    }));
+  };
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -216,19 +266,80 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
     }));
   };
 
+  function updateData() {
+    data.status =
+      caseData.status === "null" ? null : caseData.status === "true";
+    data.reason_rejected = caseData.reason_rejected;
+    data.reviewedAt = new Date();
+    data.reviewedBy = user.email;
+    //Missing certain fields
+  }
+
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (caseData.status == "false" && caseData.reason_rejected == "") {
+      alert("Du må oppgi en årsak for avvisning.");
+      return;
+    }
+    setIsSubmittingReview(true);
+    caseData.reviewedAt = new Date();
+
+    const res = await fetch("/api/cases", {
+      method: "PATCH",
+      body: JSON.stringify(caseData),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.accessToken}`,
+      },
+    });
+
+    setIsSubmittingReview(false);
+
+    if (res.ok) {
+      updateData();
+    } else {
+      alert("Error submitting changes to case.");
+    }
+  };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    console.log("Subitting!!!");
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const res = await fetch("/api/form-reply", {
+      method: "PATCH",
+      body: JSON.stringify(form),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.accessToken}`,
+      },
+    });
+
+    setIsSubmitting(false);
+
+    if (res.ok) {
+      setIsEditing(false);
+    } else {
+      alert("Error submitting form.");
+    }
+  };
+
   const handleCancel = () => {
     // Reset form to initial data when cancelling edit
     if (data?.formReply) {
       setForm({
+        id: data.formReplyId || 0,
         type: data.formReply.type || "",
-        id: data.formReply.id || 0,
         participant_id: data.formReply?.participant_id || "",
         name: data.formReply.name || "",
         email: data.formReply.email || "",
         county: data.formReply.county || "",
-        from_day: getDayString(data.formReply.from),
+        from_day: data.formReply?.from?.getDay().toString() || "0",
         from_time: getTimeString(data.formReply.from),
-        to_day: getDayString(data.formReply.to),
+        to_day: data.formReply?.to?.getDay().toString() || "0",
         to_time: getTimeString(data.formReply.to),
         tel: data.formReply.tel || "",
         has_observer: data.formReply.has_observer || false,
@@ -270,14 +381,12 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
         break;
     }
     return (
-      <div className="flex flex-row gap-2 w-fit py-1 px-2 mx-auto border rounded-md">
+      <div className="flex flex-row gap-2 w-fit py-1 px-2 mx-auto border rounded-md cursor-default">
         {getStatusSymbol(data)}
         <p>{text}</p>
       </div>
     );
   }
-
-  const [showToSection, setShowToSection] = useState(form.not_returning);
 
   return (
     <Dialog open={open} onClose={onClose} className="relative z-10">
@@ -300,13 +409,15 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
                     className="text-base text-center w-full font-semibold text-gray-900"
                   >
                     Permisjonssøknad for{" "}
-                    {data.formReply?.type == "DELEGATE"
-                      ? "delegat"
-                      : "observatør"}{" "}
-                    {data.formReply?.participant_id}
+                    {form.type == "DELEGATE" ? "delegat" : "observatør"}{" "}
+                    {form.participant_id}
                   </DialogTitle>
                   <div className="mt-2">
-                    <form className="w-full flex flex-col md:flex-row">
+                    <form
+                      className="w-full flex flex-col md:flex-row"
+                      onSubmit={handleSubmit}
+                      id="caseForm"
+                    >
                       <div className="flex flex-col-reverse md:flex-row">
                         <div className="border-t-2 flex flex-col pb-4 md:border-t-transparent md:pb-0 md:border-r md:pr-4 md:h-full">
                           <div className="w-full md:w-full mb-6 mt-3 md:mb-0">
@@ -456,13 +567,13 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
                             <div className="w-full md:w-full mb-6 mt-3 md:mb-0">
                               <div className="relative">
                                 <select
-                                  name="caseStatus"
-                                  id="caseStatus"
-                                  value={""}
-                                  onChange={handleChange}
-                                  className="block appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline"
+                                  name="status"
+                                  id="status"
+                                  value={caseData.status}
+                                  onChange={handleReview}
+                                  className="block cursor-pointer appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline"
                                 >
-                                  <option value="" disabled hidden>
+                                  <option value="null" disabled hidden>
                                     Venter på behandling
                                   </option>
                                   <option value="true">Godkjent</option>
@@ -480,6 +591,41 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
                                 </div>
                               </div>
                             </div>
+                            <div hidden={caseData.status !== "false"}>
+                              <label
+                                className="block text-gray-500 font-bold mb-1 md:mb-0 pr-4 mt-3"
+                                htmlFor="reason"
+                              >
+                                Årsak avvist
+                              </label>
+                              <textarea
+                                name="reason_rejected"
+                                id="reason_rejected"
+                                placeholder="Skriv årsaken til permisjonen her..."
+                                value={caseData.reason_rejected}
+                                onChange={handleReview}
+                                rows={5}
+                                className="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleReviewSubmit}
+                              disabled={
+                                caseData.reason_rejected === "" &&
+                                caseData.status === "false"
+                              }
+                              className={`disabled:cursor-not-allowed disabled:bg-green-400 className="inline-flex w-full justify-center rounded-md mt-2 bg-green-500 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-green-400 ${
+                                (data.status?.toString() || "null") !==
+                                  caseData.status ||
+                                data.reason_rejected !==
+                                  caseData.reason_rejected
+                                  ? "block"
+                                  : "hidden"
+                              }`}
+                            >
+                              Bekreft
+                            </button>
                           </div>
                         </div>
                         <div
@@ -561,12 +707,14 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
                             id="type"
                             name="type"
                             required
-                            className="disabled:cursor-not-allowed disabled:opacity-80 appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            className="block disabled:cursor-not-allowed cursor-pointer appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline"
                             value={form.type}
                             onChange={handleChange}
                             disabled={!isEditing}
                           >
-                            <option value="">Velg type</option>
+                            <option value="" disabled hidden>
+                              Velg type
+                            </option>
                             <option value="DELEGATE">Delegat</option>
                             <option value="OBSERVER">Observatør</option>
                           </select>
@@ -610,21 +758,61 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
                               </label>
                             </div>
                           </div>
+                          <div className="flex flex-row gap-8">
+                            <div>
+                              <label
+                                className="block text-gray-500 font-bold mb-1 md:mb-0 pr-4"
+                                htmlFor="county"
+                              >
+                                Fylke
+                              </label>
+                              <input
+                                type="text"
+                                id="county"
+                                name="county"
+                                required
+                                className="disabled:cursor-not-allowed disabled:opacity-80 appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                placeholder="Vestland"
+                                value={form.county} // Use the 'form' state
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                              />
+                            </div>
+                            <div>
+                              <label
+                                className="block text-gray-500 font-bold mb-1 md:mb-0 pr-4"
+                                htmlFor="county"
+                              >
+                                Skiltnr.
+                              </label>
+                              <input
+                                type="text"
+                                id="participant_id"
+                                name="participant_id"
+                                required
+                                className="disabled:cursor-not-allowed disabled:opacity-80 appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                placeholder="1234"
+                                value={form.participant_id} // Use the 'form' state
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                              />
+                            </div>
+                          </div>
                           <label
-                            className="block text-gray-500 font-bold mb-1 md:mb-0 pr-4"
-                            htmlFor="county"
+                            className="block text-gray-500 font-bold mb-1 md:mb-0 pr-4 mt-3"
+                            htmlFor="reason"
                           >
-                            Fylke
+                            Årsak for permisjon
                           </label>
-                          <input
-                            type="text"
-                            id="county"
-                            name="county"
-                            required
-                            className="disabled:cursor-not-allowed disabled:opacity-80 appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Vestland"
-                            value={form.county} // Use the 'form' state
+                          <textarea
+                            name="reason"
+                            id="reason"
+                            placeholder="Skriv årsaken til permisjonen her..."
+                            value={form.reason}
                             onChange={handleChange}
+                            rows={5}
+                            required
+                            className="disabled:cursor-not-allowed appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none"
                             disabled={!isEditing}
                           />
                           {/* More fields (tel, county, dates, reason, observer details) */}
@@ -697,11 +885,25 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
             </div>
             <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
               <button
-                type="button"
-                onClick={enableEdit} // Use enableEdit to switch to edit mode
-                className="inline-flex w-full justify-center rounded-md bg-blue-500 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-blue-400 sm:ml-3 sm:w-auto"
+                type={!isEditing ? "button" : "submit"}
+                disabled={isSubmitting}
+                form="caseForm"
+                onClick={(e) => {
+                  if (!isEditing) {
+                    // If not in editing mode, clicking should enable edit
+                    e.preventDefault(); // Crucial: Prevent default form submission if it somehow triggers
+                    enableEdit();
+                  }
+                  // If in editing mode, let the type="submit" handle it
+                  // No need for a custom onClick here for "Lagre" state as type="submit" will trigger form's onSubmit
+                }}
+                className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-xs sm:ml-3 sm:w-auto ${
+                  !isEditing
+                    ? "bg-blue-500 hover:bg-blue-400"
+                    : "bg-green-500 hover:bg-green-400"
+                } ${isSubmitting ? "cursor-progress opacity-50" : ""}`}
               >
-                {!isEditing ? "Rediger" : "Lagre"}
+                {!isEditing ? "Rediger" : !isSubmitting ? "Lagre" : "Lagrer..."}
               </button>
               <button
                 type="button"
@@ -711,21 +913,6 @@ export default function CaseDialog({ open, data, onClose }: CaseDialogProps) {
               >
                 {isEditing ? "Avbryt" : "Lukk"}
               </button>
-              {isEditing && ( // Show "Lagre" button only when in editing mode
-                <button
-                  type="submit" // Change to submit
-                  form="case-form" // Link to your form
-                  disabled={!isFormValid}
-                  className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-xs sm:ml-3 sm:w-auto
-                    ${
-                      isFormValid
-                        ? "bg-green-600 hover:bg-green-500"
-                        : "bg-gray-400 cursor-not-allowed"
-                    }`}
-                >
-                  Lagre
-                </button>
-              )}
             </div>
           </DialogPanel>
         </div>

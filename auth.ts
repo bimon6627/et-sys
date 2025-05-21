@@ -15,9 +15,9 @@ const config: NextAuthConfig = {
   },
   callbacks: {
     // This callback runs when the JWT is created or updated
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       // If the user is logging in for the first time (user is available)
-      if (user) {
+      if (user && account) {
         // Fetch the user role from your database
         const userRecord = await prisma.whitelist.findUnique({
           where: { email: user.email as string },
@@ -27,6 +27,7 @@ const config: NextAuthConfig = {
           // Attach the role to the JWT token
           token.role = userRecord.role;
           token.email = userRecord.email;
+          token.accessToken = account.access_Token;
         }
       }
       return token;
@@ -38,6 +39,7 @@ const config: NextAuthConfig = {
       if (token) {
         session.user.role = token.role as string; // Attach role from token to session
         session.user.email = token.email as string; // Attach email from token to session
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },

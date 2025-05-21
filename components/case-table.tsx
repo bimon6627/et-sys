@@ -5,8 +5,17 @@ import { CaseWithFormReply } from "@/types/case";
 import CaseDialog from "./case-dialog";
 import getStatusSymbol from "./status-symbol";
 
+interface User {
+  name?: string | undefined;
+  image?: string | undefined;
+  given_name?: string | undefined;
+  family_name?: string | undefined;
+  email?: string | undefined;
+  role?: string | undefined;
+}
+
 interface CaseTableProps {
-  initialUser: any;
+  user: User;
   initialCases: CaseWithFormReply[];
 }
 
@@ -24,10 +33,7 @@ function getDateString(inDate: Date) {
   return `${day} ${formattedHours}:${formattedMinutes}`;
 }
 
-export default function CaseTable({
-  initialUser,
-  initialCases,
-}: CaseTableProps) {
+export default function CaseTable({ user, initialCases }: CaseTableProps) {
   // Make this a regular synchronous function
   const [cases, setCases] = useState(initialCases); // Use state for cases
   const [activeButton, setActiveButton] = useState("Alle");
@@ -50,11 +56,11 @@ export default function CaseTable({
   };
 
   useEffect(() => {
-    if (initialUser === undefined) {
+    if (user === undefined) {
     } else {
       setLoading(false);
     }
-  }, [initialUser]);
+  }, [user]);
 
   useEffect(() => {
     const fetchNewCases = async () => {
@@ -210,8 +216,13 @@ export default function CaseTable({
         </div>
       </div>
 
-      <CaseDialog open={isDialogOpen} data={dialogData} onClose={closeDialog} />
-      <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-[500px] md:max-h-30 overflow-y-auto overflow-x-auto max-w-full">
+      <CaseDialog
+        open={isDialogOpen}
+        data={dialogData}
+        user={user}
+        onClose={closeDialog}
+      />
+      <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-8/10 overflow-y-auto overflow-x-auto max-w-full">
         <table className="table-fixed text-sm border-collapse">
           <thead>
             <tr className="bg-eo-lblue sticky top-0">
