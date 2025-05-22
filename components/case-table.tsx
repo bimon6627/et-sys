@@ -48,7 +48,9 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogData, setDialogData] = useState(initialCases[0]); // State to hold the JSON object
+  const [dialogData, setDialogData] = useState<CaseWithFormReply | null>(
+    initialCases.length > 0 ? initialCases[0] : null
+  );
   const [sortColumn, setSortColumn] = useState<keyof FormReply | null>(null); // Column to sort by
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc"); // Sort direction
 
@@ -398,12 +400,16 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
         </div>
       </div>
 
-      <CaseDialog
-        open={isDialogOpen}
-        data={dialogData}
-        user={user}
-        onClose={closeDialog}
-      />
+      {dialogData !== null ? (
+        <CaseDialog
+          open={isDialogOpen}
+          data={dialogData}
+          user={user}
+          onClose={closeDialog}
+        />
+      ) : (
+        <></>
+      )}
       <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-8/10 overflow-y-auto overflow-x-auto max-w-8/10">
         <table className="table-auto w-full text-sm border-collapse">
           <thead>
