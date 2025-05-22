@@ -56,16 +56,11 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   const headerRef = useRef<HTMLTableSectionElement>(null);
   const scrollableBodyRef = useRef<HTMLDivElement>(null);
   const activeButtonRef = useRef(activeButton);
-  const sessionRef = useRef(session);
 
   useEffect(() => {
     activeButtonRef.current = activeButton;
     fetchNewCases();
   }, [activeButton]);
-
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
 
   const openDialog = (caseData: CaseWithFormReply) => {
     setDialogData(caseData);
@@ -85,13 +80,11 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   const fetchNewCases = async () => {
     const condition = activeButtonRef.current;
     const url = `/api/cases?status=${condition}`;
-    console.log(sessionRef.current?.accessToken);
     try {
       const response = await fetch(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionRef.current?.accessToken}`,
         },
       });
       if (!response.ok) {
@@ -138,12 +131,7 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   };
 
   useEffect(() => {
-    if (!session?.accessToken) return;
-
     const intervalId = setInterval(() => {
-      const currentSession = sessionRef.current;
-      console.log("Interval fetch with sessionRef:", currentSession);
-      if (!currentSession?.accessToken) return;
       fetchNewCases();
     }, 5000);
 
