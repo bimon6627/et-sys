@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Make sure the path is correct
 
 export default auth(async (req) => {
   const session = await req.auth;
