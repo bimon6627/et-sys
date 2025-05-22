@@ -1,19 +1,6 @@
 "use client";
 
-import {
-  BiCog,
-  BiColumns,
-  BiCommentDetail,
-  BiFile,
-  BiInfoCircle,
-  BiLayout,
-  BiMenu,
-  BiMobileAlt,
-  BiPlusMedical,
-  BiShield,
-  BiUser,
-  BiX,
-} from "react-icons/bi";
+import { BiMenu, BiX } from "react-icons/bi";
 import { useState } from "react";
 import AuthorizedNavlinks from "./authorized-navlinks";
 import SignOut from "./sign-out";

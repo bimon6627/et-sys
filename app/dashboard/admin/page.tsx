@@ -1,7 +1,4 @@
 import React from "react";
-import UserAvatar from "@/components/user-avatar";
-import SignOut from "@/components/sign-out";
-import GetUserInfo from "@/components/js/get-user-info";
 import NavbarAuthorized from "@/components/authorized-navbar";
 import AdminComponent from "@/components/admin-component"; // Import the AdminComponent
 import { Metadata } from "next";

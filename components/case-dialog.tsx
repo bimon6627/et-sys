@@ -229,9 +229,8 @@ export default function CaseDialog({
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    console.log("Im run!");
     const { name, value } = e.target;
-    let newValue: string | boolean = value;
+    const newValue: string | boolean = value;
 
     setCaseData((prev) => ({
       ...prev,

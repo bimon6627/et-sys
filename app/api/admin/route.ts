@@ -2,12 +2,12 @@
 import { prisma } from "@/lib/prisma"; // import your Prisma client
 
 // Define the handler for the POST request
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { value } = body;
 
-    const updatedConfig = await prisma.config.update({
+    await prisma.config.update({
       where: {
         key: "START_DATE",
       },
@@ -29,7 +29,7 @@ export async function POST(req: Request, res: Response) {
   }
 }
 
-export async function GET(req: Request, res: Response) {
+export async function GET() {
   try {
     const startDateConfig = await prisma.config.findUnique({
       where: { key: "START_DATE" },

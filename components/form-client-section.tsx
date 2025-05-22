@@ -1,13 +1,9 @@
 // components/FormClientSection.tsx
 "use client";
-
-import { prisma } from "@/lib/prisma";
 import { useEffect, useRef, useState } from "react";
-import { BiCheckCircle, BiInfoCircle, BiLoader } from "react-icons/bi";
+import { BiCheckCircle, BiInfoCircle } from "react-icons/bi";
 
-interface FormClientSectionProps {}
-
-export default function FormClientSection({}: FormClientSectionProps) {
+export default function FormClientSection() {
   const toSectionRef = useRef<HTMLDivElement>(null);
   const observerCheckboxRef = useRef<HTMLDivElement>(null);
   const observerDetailsRef = useRef<HTMLDivElement>(null);
@@ -98,7 +94,7 @@ export default function FormClientSection({}: FormClientSectionProps) {
   }, [form]);
 
   const validateForm = () => {
-    let has_observer = form.has_observer && form.type == "DELEGATE";
+    const has_observer = form.has_observer && form.type == "DELEGATE";
     const idValid = /^\d{1,4}$/.test(form.id);
     const typeValid = form.type == "DELEGATE" || form.type == "OBSERVER";
     const emailValid = form.email.includes("@");
@@ -148,14 +144,11 @@ export default function FormClientSection({}: FormClientSectionProps) {
       newValue = checked;
     }
 
-    // Example: Validate phone number format (Norwegian mobile format)
     if (name === "tel" || name === "observer_tel") {
-      const phoneRegex = /\d{7}$/;
       newValue = value.replace(/\D/g, "").slice(0, 8);
     }
 
     if (name === "id" || name === "observer_id") {
-      const idRegex = /^\d{1,4}$/;
       newValue = value.replace(/\D/g, "").slice(0, 4);
     }
 

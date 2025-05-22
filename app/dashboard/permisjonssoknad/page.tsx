@@ -1,5 +1,4 @@
 import React from "react";
-import GetUserInfo from "@/components/js/get-user-info";
 import NavbarAuthorized from "@/components/authorized-navbar";
 import FormClientSection from "@/components/form-client-section";
 import { Metadata } from "next";
@@ -10,7 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default async function AuthFormPage() {
-  const user = await GetUserInfo();
   return (
     <div className="min-w-screen min-h-screen md:flex flex-row">
       <NavbarAuthorizedHamburger />

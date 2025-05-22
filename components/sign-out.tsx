@@ -1,6 +1,6 @@
 "use client";
 import { signOut } from "next-auth/react";
-import { BiExit, BiLogOut } from "react-icons/bi";
+import { BiLogOut } from "react-icons/bi";
 import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function SignOut() {

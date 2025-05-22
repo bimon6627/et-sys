@@ -1,5 +1,6 @@
 // app/api/cases.ts
 import { prisma } from "@/lib/prisma"; // import your Prisma client
+import { Prisma } from "@prisma/client";
 import { getToken } from "next-auth/jwt";
 
 const secret = process.env.AUTH_SECRET;
@@ -89,7 +90,7 @@ export async function GET(req: Request) {
       },
     };
 
-    let whereClause: any = {};
+    const whereClause: Prisma.CaseWhereInput = {}; // NEW line
     const now = new Date();
 
     switch (status) {

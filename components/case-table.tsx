@@ -77,8 +77,7 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   };
 
   useEffect(() => {
-    if (user === undefined) {
-    } else {
+    if (user !== undefined) {
       setLoading(false);
     }
   }, [user]);
@@ -122,9 +121,19 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
         console.error("Failed to fetch cases correctly:", data);
         setError("Failed to fetch cases.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      // Change 'any' to 'unknown'
       console.error("Failed to fetch new cases:", error);
-      setError(error.message);
+
+      // Safely check if error is an instance of Error before accessing .message
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        // Handle cases where the error might not be an Error object (e.g., a string or an object)
+        setError("An unknown error occurred.");
+        // Or if you want to be more specific:
+        // setError(String(error)); // Convert whatever 'error' is to a string
+      }
     }
   };
 
@@ -180,7 +189,9 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
     }
   };
 
-  const isEmptySortValue = (value: any): boolean => {
+  const isEmptySortValue = (
+    value: string | number | boolean | Date | null | undefined
+  ): boolean => {
     return (
       value === null ||
       value === undefined ||
