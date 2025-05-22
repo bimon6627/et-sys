@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import {
   BiLayout,
   BiColumns,
@@ -11,7 +12,10 @@ import {
   BiInfoCircle,
 } from "react-icons/bi";
 
-export default function AuthorizedNavlinks() {
+export default async function AuthorizedNavlinks() {
+  const session = await auth();
+  const user = session?.user;
+
   return (
     <div>
       <div className="flex flex-col border-b py-2 gap-2">
@@ -38,14 +42,14 @@ export default function AuthorizedNavlinks() {
         </a>
         <a
           href="/dashboard"
-          className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
+          className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiPlusMedical />
           HMS
         </a>
         <a
           href="/dashboard"
-          className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
+          className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiUser />
           Deltakere
@@ -54,14 +58,14 @@ export default function AuthorizedNavlinks() {
       <div className="flex flex-col border-b py-2 gap-2">
         <a
           href="/dashboard"
-          className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
+          className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiCommentDetail />
           Debatt
         </a>
         <a
           href="/dashboard"
-          className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
+          className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiMobileAlt />
           Digital votering
@@ -70,21 +74,25 @@ export default function AuthorizedNavlinks() {
       <div className="flex flex-col border-b py-2 gap-2">
         <a
           href="/dashboard"
-          className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
+          className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiCog />
           Innstillinger
         </a>
-        <a
-          href="/dashboard/admin"
-          className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
-        >
-          <BiShield />
-          Admin
-        </a>
+        {user?.role == "ADMIN" ? (
+          <a
+            href="/dashboard/admin"
+            className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
+          >
+            <BiShield />
+            Admin
+          </a>
+        ) : (
+          <></>
+        )}
         <a
           href="/dashboard"
-          className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
+          className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiInfoCircle />
           Hjelp

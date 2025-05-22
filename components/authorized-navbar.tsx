@@ -6,7 +6,6 @@ import AuthorizedNavlinks from "./authorized-navlinks";
 export default async function NavbarAuthorized() {
   const user = await GetUserInfo();
   const name = user.name ?? "";
-  //const role = user.role; Not yet implemented.
 
   return (
     <nav className="hidden md:flex sticky flex-col gap-2 top-0 h-screen bg-gray-100 p-2">
