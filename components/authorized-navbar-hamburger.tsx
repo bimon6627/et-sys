@@ -4,10 +4,14 @@ import { BiMenu, BiX } from "react-icons/bi";
 import { useState } from "react";
 import AuthorizedNavlinks from "./authorized-navlinks";
 import SignOut from "./sign-out";
-import { useSession } from "next-auth/react";
 
-export default function NavbarAuthorizedHamburger() {
-  const { data: session } = useSession();
+interface AuthorizedNavlinksProps {
+  role: string; // The role is expected to be a string
+}
+
+export default function NavbarAuthorizedHamburger({
+  role,
+}: AuthorizedNavlinksProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -15,7 +19,7 @@ export default function NavbarAuthorizedHamburger() {
   };
 
   return (
-    <nav className="flex md:hidden top-0 z-20 sticky">
+    <div className="flex md:hidden top-0 z-20 sticky">
       <button onClick={toggleMenu} className="hover:bg-gray-200 rounded-br-md">
         {isOpen ? <BiX className="size-6" /> : <BiMenu className="size-6" />}
       </button>
@@ -24,14 +28,9 @@ export default function NavbarAuthorizedHamburger() {
           isOpen ? "block" : "hidden"
         } absolute top-full left-0 bg-white shadow-md rounded-md z-10 w-full`}
       >
-        {session !== null ? (
-          <AuthorizedNavlinks role={session?.user.role ?? ""} />
-        ) : (
-          <></>
-        )}
-
+        <AuthorizedNavlinks role={role} />
         <SignOut />
       </div>
-    </nav>
+    </div>
   );
 }

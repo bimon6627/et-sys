@@ -2,8 +2,6 @@ import React from "react";
 import NavbarAuthorized from "@/components/authorized-navbar";
 import FormClientSection from "@/components/form-client-section";
 import { Metadata } from "next";
-import NavbarAuthorizedHamburger from "@/components/authorized-navbar-hamburger";
-
 export const metadata: Metadata = {
   title: "Søknadsskjema",
 };
@@ -11,7 +9,6 @@ export const metadata: Metadata = {
 export default async function AuthFormPage() {
   return (
     <div className="min-w-screen min-h-screen md:flex flex-row">
-      <NavbarAuthorizedHamburger />
       <NavbarAuthorized />
       <main className="flex flex-row flex-grow items-center justify-center w-full h-full p-6 md:p-10">
         <div className="flex flex-grow justify-center mt-10 mb-10 w-full h-full overflow-y-hidden">
