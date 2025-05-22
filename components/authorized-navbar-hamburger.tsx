@@ -4,8 +4,10 @@ import { BiMenu, BiX } from "react-icons/bi";
 import { useState } from "react";
 import AuthorizedNavlinks from "./authorized-navlinks";
 import SignOut from "./sign-out";
+import { useSession } from "next-auth/react";
 
 export default function NavbarAuthorizedHamburger() {
+  const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -22,7 +24,11 @@ export default function NavbarAuthorizedHamburger() {
           isOpen ? "block" : "hidden"
         } absolute top-full left-0 bg-white shadow-md rounded-md z-10 w-full`}
       >
-        <AuthorizedNavlinks />
+        {session !== null ? (
+          <AuthorizedNavlinks role={session?.user.role ?? ""} />
+        ) : (
+          <></>
+        )}
 
         <SignOut />
       </div>

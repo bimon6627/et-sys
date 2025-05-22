@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import {
   BiLayout,
   BiColumns,
@@ -12,10 +11,13 @@ import {
   BiInfoCircle,
 } from "react-icons/bi";
 
-export default async function AuthorizedNavlinks() {
-  const session = await auth();
-  const user = session?.user;
+interface AuthorizedNavlinksProps {
+  role: string; // The role is expected to be a string
+}
 
+export default async function AuthorizedNavlinks({
+  role,
+}: AuthorizedNavlinksProps) {
   return (
     <div>
       <div className="flex flex-col border-b py-2 gap-2">
@@ -79,7 +81,7 @@ export default async function AuthorizedNavlinks() {
           <BiCog />
           Innstillinger
         </a>
-        {user?.role == "ADMIN" ? (
+        {role == "ADMIN" ? (
           <a
             href="/dashboard/admin"
             className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
