@@ -5,7 +5,7 @@ import { getToken } from "next-auth/jwt";
 const secret = process.env.AUTH_SECRET;
 
 // Define the handler for the POST request
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
@@ -68,7 +68,7 @@ export async function POST(req: Request, res: Response) {
       },
     });
 
-    const newCase = await prisma.case.create({
+    await prisma.case.create({
       data: {
         formReply: {
           connect: {
@@ -99,7 +99,7 @@ export async function POST(req: Request, res: Response) {
   }
 }
 
-export async function PATCH(req: Request, res: Response) {
+export async function PATCH(req: Request) {
   try {
     const token = await getToken({ req, secret });
     if (!token) {
@@ -159,7 +159,7 @@ export async function PATCH(req: Request, res: Response) {
       toDate.setHours(toHours, toMinutes, 0, 0); // set HH:MM:SS:MS
     }
 
-    const updatedForm = await prisma.formReply.update({
+    await prisma.formReply.update({
       where: { id: id },
       data: {
         name: name,
@@ -193,7 +193,7 @@ export async function PATCH(req: Request, res: Response) {
   }
 }
 
-export async function GET(req: Request, res: Response) {
+export async function GET() {
   return new Response(JSON.stringify({ error: "Method not allowed." }), {
     status: 405,
     headers: { "Content-Type": "application/json" },

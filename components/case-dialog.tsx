@@ -230,7 +230,7 @@ export default function CaseDialog({
     >
   ) => {
     console.log("Im run!");
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     let newValue: string | boolean = value;
 
     setCaseData((prev) => ({
@@ -613,8 +613,9 @@ export default function CaseDialog({
                               type="button"
                               onClick={handleReviewSubmit}
                               disabled={
-                                caseData.reason_rejected === "" &&
-                                caseData.status === "false"
+                                (caseData.reason_rejected === "" &&
+                                  caseData.status === "false") ||
+                                isSubmittingReview
                               }
                               className={`disabled:cursor-not-allowed disabled:bg-green-400 className="inline-flex w-full justify-center rounded-md mt-2 bg-green-500 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-green-400 ${
                                 (data.status?.toString() || "null") !==
@@ -887,7 +888,7 @@ export default function CaseDialog({
             <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
               <button
                 type={!isEditing ? "button" : "submit"}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isEditing && !isFormValid)}
                 form="caseForm"
                 onClick={(e) => {
                   if (!isEditing) {

@@ -16,37 +16,70 @@ export default function getStatusSymbol(data: CaseWithFormReply) {
   switch (status) {
     case "ACTIVE":
       return hms ? (
-        <BiPlusMedical className={"text-green-600 " + classNameString} />
+        <BiPlusMedical
+          title="Aktiv HMS permisjon"
+          className={"text-green-600 " + classNameString}
+        />
       ) : (
-        <BiSolidCheckCircle className={"text-green-600 " + classNameString} />
+        <BiSolidCheckCircle
+          title="Aktiv permisjon"
+          className={"text-green-600 " + classNameString}
+        />
       );
     case "SCHEDULED":
       return hms ? (
-        <BiPlusMedical className={"text-emerald-400 " + classNameString} />
+        <BiPlusMedical
+          title="Godkjent HMS permisjon"
+          className={"text-emerald-400 " + classNameString}
+        />
       ) : (
-        <BiSolidTime className={"text-emerald-400 " + classNameString} />
+        <BiSolidTime
+          title="Godkjent permisjon"
+          className={"text-emerald-400 " + classNameString}
+        />
       );
     case "EXPIRED":
       return hms ? (
-        <BiPlusMedical className={"text-gray-500 " + classNameString} />
+        <BiPlusMedical
+          title="Utgått HMS permisjon"
+          className={"text-gray-500 " + classNameString}
+        />
       ) : (
-        <BiSolidCheckCircle className={"text-gray-500 " + classNameString} />
+        <BiSolidCheckCircle
+          title="Utgått permisjon"
+          className={"text-gray-500 " + classNameString}
+        />
       );
     case "PENDING":
       return hms ? (
-        <BiPlusMedical className={"text-amber-300 " + classNameString} />
+        <BiPlusMedical
+          title="Venter på behandling, HMS"
+          className={"text-amber-300 " + classNameString}
+        />
       ) : (
-        <BiSolidCircle className={"text-amber-300 " + classNameString} />
+        <BiSolidCircle
+          title="Venter på behandling"
+          className={"text-amber-300 " + classNameString}
+        />
       );
     case "REJECTED":
       return hms ? (
-        <BiPlusMedical className={"text-red-600 " + classNameString} />
+        <BiPlusMedical
+          title="Avvist HMS permisjon"
+          className={"text-red-600 " + classNameString}
+        />
       ) : (
-        <BiSolidXCircle className={"text-red-600 " + classNameString} />
+        <BiSolidXCircle
+          title="Avvist permisjon"
+          className={"text-red-600 " + classNameString}
+        />
       );
     case "ERROR":
       return (
-        <BiSolidErrorCircle className={"text-orange-500 " + classNameString} />
+        <BiSolidErrorCircle
+          title="En feil har oppstått..."
+          className={"text-orange-500 " + classNameString}
+        />
       );
   }
 }

@@ -7,15 +7,6 @@ import { Metadata } from "next";
 import CaseTable from "@/components/case-table";
 import NavbarAuthorizedHamburger from "@/components/authorized-navbar-hamburger";
 
-interface User {
-  name?: string | undefined;
-  image?: string | undefined;
-  given_name?: string | undefined;
-  family_name?: string | undefined;
-  email?: string | undefined;
-  role?: string | undefined;
-}
-
 const prisma = new PrismaClient();
 
 async function getAllCases() {

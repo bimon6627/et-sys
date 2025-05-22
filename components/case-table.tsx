@@ -1,15 +1,14 @@
 "use client";
-import { useState, useEffect, useRef } from "react"; // Import useEffect
+import { useState, useEffect, useRef, useMemo } from "react"; // Import useEffect
 import {
   BiCheckbox,
-  BiCheckboxChecked,
   BiError,
   BiSolidCheckboxChecked,
   BiSolidDownArrow,
   BiSolidSortAlt,
   BiSolidUpArrow,
 } from "react-icons/bi";
-import { CaseWithFormReply } from "@/types/case";
+import { CaseWithFormReply, FormReply } from "@/types/case";
 import CaseDialog from "./case-dialog";
 import getStatusSymbol from "./status-symbol";
 import { useSession } from "next-auth/react";
@@ -50,7 +49,8 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState(initialCases[0]); // State to hold the JSON object
-  const [sortCondition, setSortCondition] = useState("");
+  const [sortColumn, setSortColumn] = useState<keyof FormReply | null>(null); // Column to sort by
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc"); // Sort direction
 
   const titleRef = useRef<HTMLDivElement>(null); // Assuming your buttons are in a div
   const headerRef = useRef<HTMLTableSectionElement>(null);
@@ -169,34 +169,95 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
     setActiveButton(buttonName);
   };
 
-  const sortCases = (condition: String, cases: CaseTableProps[]) => {};
-
-  function tableHeader(header: String, condition: String) {
-    let arrow = 0;
-    if (sortCondition !== "") {
-      const currentCondition = sortCondition.split("-")[0];
-      const modifier = sortCondition.split("-")[1];
-
-      if (currentCondition === condition) {
-        if (modifier === "ASCENDING") arrow = 1;
-        else arrow = -1;
-      }
+  const handleSortClick = (column: keyof FormReply) => {
+    if (sortColumn === column) {
+      // If clicking the same column, toggle direction
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // If clicking a new column, set it as the sort column and default to ascending
+      setSortColumn(column);
+      setSortDirection("asc");
     }
+  };
+
+  const isEmptySortValue = (value: any): boolean => {
     return (
-      <div className="flex flex-row items-center justify-center">
-        <p>{header}</p>
-        <div className="cursor-pointer">
-          {arrow === 0 ? (
-            <BiSolidSortAlt />
-          ) : arrow === 1 ? (
-            <BiSolidUpArrow />
-          ) : (
-            <BiSolidDownArrow />
-          )}
-        </div>
-      </div>
+      value === null ||
+      value === undefined ||
+      (typeof value === "string" && value.trim() === "")
     );
-  }
+  };
+
+  const sortedCases = useMemo(() => {
+    if (!sortColumn) {
+      return cases; // No sorting applied
+    }
+
+    const sortableCases = [...cases]; // Create a shallow copy
+
+    sortableCases.sort((a, b) => {
+      const aFormReply = a.formReply;
+      const bFormReply = b.formReply;
+
+      // First, handle cases where formReply itself might be null or undefined
+      // This ensures cases without a formReply are consistently positioned.
+      // Let's decide to always push them to the end, regardless of direction.
+      if (!aFormReply && !bFormReply) return 0;
+      if (!aFormReply) return 1; // 'a' is missing formReply, push to end
+      if (!bFormReply) return -1; // 'b' is missing formReply, push to end
+
+      // Now we are sure aFormReply and bFormReply exist.
+      // Get the values for the current sortColumn.
+      // Use non-null assertion `!` because we check `sortColumn` at the top and `formReply` just above.
+      const aValue = aFormReply[sortColumn!];
+      const bValue = bFormReply[sortColumn!];
+
+      const aIsEmpty = isEmptySortValue(aValue);
+      const bIsEmpty = isEmptySortValue(bValue);
+
+      // --- CRITICAL CHANGE FOR EMPTY VALUES ---
+      // If both are empty, consider them equal in terms of sort order.
+      if (aIsEmpty && bIsEmpty) return 0;
+      // If only 'a' is empty, 'a' comes after 'b' (push empty to end).
+      if (aIsEmpty) return 1;
+      // If only 'b' is empty, 'b' comes after 'a' (push empty to end).
+      if (bIsEmpty) return -1;
+      // --- END CRITICAL CHANGE ---
+
+      // At this point, both aValue and bValue are guaranteed to be non-empty.
+      // Proceed with type-specific comparison.
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortDirection === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else if (aValue instanceof Date && bValue instanceof Date) {
+        const aTime = aValue.getTime();
+        const bTime = bValue.getTime();
+        return sortDirection === "asc" ? aTime - bTime : bTime - aTime;
+      } else if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+      } else if (typeof aValue === "boolean" && typeof bValue === "boolean") {
+        const aBool = aValue ? 1 : 0;
+        const bBool = bValue ? 1 : 0;
+        return sortDirection === "asc" ? aBool - bBool : bBool - aBool;
+      }
+      // Fallback: If types are unknown or mixed, treat as equal.
+      // You might want to handle this case more specifically if other types are possible.
+      return 0;
+    });
+
+    return sortableCases;
+  }, [cases, sortColumn, sortDirection]);
+
+  const renderSortIcon = (column: keyof FormReply) => {
+    if (sortColumn !== column) {
+      return <BiSolidSortAlt className="ml-1" />;
+    }
+    if (sortDirection === "desc") {
+      return <BiSolidUpArrow className="ml-1" />;
+    }
+    return <BiSolidDownArrow className="ml-1" />;
+  };
 
   if (loading) {
     return (
@@ -344,30 +405,128 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
         user={user}
         onClose={closeDialog}
       />
-      <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-8/10 overflow-y-auto overflow-x-auto max-w-full">
+      <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-8/10 overflow-y-auto overflow-x-auto max-w-8/10">
         <table className="table-auto w-full text-sm border-collapse">
           <thead>
             <tr className="bg-eo-lblue sticky top-0">
               <th></th>
-              <th className="rounded-tl-sm">{tableHeader("ID", "ID")}</th>
-              <th>{tableHeader("Navn", "NAME")}</th>
-              <th>{tableHeader("Skiltnr.", "PARTICIPANT_ID")}</th>
-              <th>{tableHeader("E-post", "EMAIL")}</th>
-              <th>{tableHeader("Deltakertype", "TYPE")}</th>
-              <th>{tableHeader("Tlf", "TEL")}</th>
-              <th>{tableHeader("Fylke", "COUNTY")}</th>
-              <th>{tableHeader("Fra", "FROM")}</th>
-              <th>{tableHeader("Til", "TO")}</th>
-              <th>{tableHeader("Årsak", "REASON")}</th>
-              <th>{tableHeader("Har observatør", "HAS_OBSERVER")}</th>
-              <th>{tableHeader("Observatør navn", "OBSERVER_NAME")}</th>
-              <th>{tableHeader("Observatør skiltnr.", "OBSERVER_ID")}</th>
-              <th>{tableHeader("Observatør tlf.", "OBSERVER_TEL")}</th>
+              <th className="rounded-tl-s">
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>ID</p>
+                  <a onClick={() => handleSortClick("id")}>
+                    {renderSortIcon("id")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Navn</p>
+                  <a onClick={() => handleSortClick("name")}>
+                    {renderSortIcon("name")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Skiltnr.</p>
+                  <a onClick={() => handleSortClick("participant_id")}>
+                    {renderSortIcon("participant_id")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>E-post.</p>
+                  <a onClick={() => handleSortClick("email")}>
+                    {renderSortIcon("email")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Deltakertype</p>
+                  <a onClick={() => handleSortClick("type")}>
+                    {renderSortIcon("type")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Tlf</p>
+                  <a onClick={() => handleSortClick("tel")}>
+                    {renderSortIcon("tel")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Fylke</p>
+                  <a onClick={() => handleSortClick("county")}>
+                    {renderSortIcon("county")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Fra</p>
+                  <a onClick={() => handleSortClick("from")}>
+                    {renderSortIcon("from")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Til</p>
+                  <a onClick={() => handleSortClick("to")}>
+                    {renderSortIcon("to")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Årsak</p>
+                  <a onClick={() => handleSortClick("reason")}>
+                    {renderSortIcon("reason")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Har observatør</p>
+                  <a onClick={() => handleSortClick("has_observer")}>
+                    {renderSortIcon("has_observer")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Observatør navn</p>
+                  <a onClick={() => handleSortClick("observer_name")}>
+                    {renderSortIcon("observer_name")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Observatør skiltnr.</p>
+                  <a onClick={() => handleSortClick("observer_id")}>
+                    {renderSortIcon("observer_id")}
+                  </a>
+                </div>
+              </th>
+              <th>
+                <div className="flex flex-row items-center justify-center py-1">
+                  <p>Observatør tlf</p>
+                  <a onClick={() => handleSortClick("observer_tel")}>
+                    {renderSortIcon("observer_tel")}
+                  </a>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {cases &&
-              cases
+            {sortedCases &&
+              sortedCases
                 .filter((caseItem: CaseWithFormReply) => caseItem.formReply)
                 .map((caseItem: CaseWithFormReply) => (
                   <tr

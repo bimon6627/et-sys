@@ -5,14 +5,14 @@ import { getToken } from "next-auth/jwt";
 const secret = process.env.AUTH_SECRET;
 
 // Define the handler for the POST request
-export async function POST(req: Request, res: Response) {
+export async function POST() {
   return new Response(JSON.stringify({ error: "Method not allowed." }), {
     status: 405,
     headers: { "Content-Type": "application/json" },
   });
 }
 
-export async function PATCH(req: Request, res: Response) {
+export async function PATCH(req: Request) {
   try {
     const token = await getToken({ req, secret });
     if (!token) {
@@ -32,17 +32,17 @@ export async function PATCH(req: Request, res: Response) {
     const body = await req.json();
     const {
       id,
-      id_swapped,
+      //id_swapped,
       status,
       reason_rejected,
-      comment,
+      //comment,
       reviewedBy,
       reviewedAt,
-      reviewedById,
+      //reviewedById,
     } = body;
     const boolStatus = status === "null" ? null : status === "true";
 
-    const updatedCase = await prisma.case.update({
+    await prisma.case.update({
       where: { id: id },
       data: {
         status: boolStatus,
@@ -64,7 +64,7 @@ export async function PATCH(req: Request, res: Response) {
   }
 }
 
-export async function GET(req: Request, res: Response) {
+export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
