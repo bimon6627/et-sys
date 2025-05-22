@@ -8,12 +8,6 @@ const config: NextAuthConfig = {
     Google({
       clientId: process.env.GOOGLE_ID as string,
       clientSecret: process.env.GOOGLE_SECRET as string,
-      authorization: {
-        params: {
-          scope:
-            "openid email profile https://www.googleapis.com/auth/userinfo.email",
-        },
-      },
     }),
   ],
   pages: {
