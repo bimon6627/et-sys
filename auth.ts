@@ -22,6 +22,7 @@ const config: NextAuthConfig = {
   callbacks: {
     // This callback runs when the JWT is created or updated
     async jwt({ token, user, account }) {
+      console.log("ACCOUNT OBJECT:", account);
       // Only fetch the user role if logging in
       if (user && account) {
         const userRecord = await prisma.whitelist.findUnique({
