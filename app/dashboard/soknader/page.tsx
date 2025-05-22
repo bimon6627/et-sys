@@ -45,7 +45,7 @@ export default async function Soknader() {
     <div className="bg-white max-w-screen min-h-screen md:flex flex-row">
       <NavbarAuthorizedHamburger />
       <NavbarAuthorized />
-      <main className="mx-auto w-full md:w-3/4">
+      <main className="mx-auto w-full md:mx-5">
         <CaseTable user={user} initialCases={cases} />
       </main>
     </div>

@@ -29,6 +29,7 @@ interface CaseWithFormReply {
   reviewedBy?: string | null;
   reviewedAt?: Date | null;
   formReply?: FormReply | null; // Make formReply optional AND nullable
+  hmsFlag: Boolean;
   // Add other properties of Case as needed
 }
 

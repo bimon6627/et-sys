@@ -1,6 +1,14 @@
 "use client";
 import { useState, useEffect, useRef } from "react"; // Import useEffect
-import { BiCheckbox, BiCheckboxChecked, BiError } from "react-icons/bi";
+import {
+  BiCheckbox,
+  BiCheckboxChecked,
+  BiError,
+  BiSolidCheckboxChecked,
+  BiSolidDownArrow,
+  BiSolidSortAlt,
+  BiSolidUpArrow,
+} from "react-icons/bi";
 import { CaseWithFormReply } from "@/types/case";
 import CaseDialog from "./case-dialog";
 import getStatusSymbol from "./status-symbol";
@@ -35,8 +43,6 @@ function getDateString(inDate: Date) {
 }
 
 export default function CaseTable({ user, initialCases }: CaseTableProps) {
-  // Make this a regular synchronous function
-
   const { data: session } = useSession();
   const [cases, setCases] = useState(initialCases); // Use state for cases
   const [activeButton, setActiveButton] = useState("ALL");
@@ -44,6 +50,7 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState(initialCases[0]); // State to hold the JSON object
+  const [sortCondition, setSortCondition] = useState("");
 
   const titleRef = useRef<HTMLDivElement>(null); // Assuming your buttons are in a div
   const headerRef = useRef<HTMLTableSectionElement>(null);
@@ -162,6 +169,35 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
     setActiveButton(buttonName);
   };
 
+  const sortCases = (condition: String, cases: CaseTableProps[]) => {};
+
+  function tableHeader(header: String, condition: String) {
+    let arrow = 0;
+    if (sortCondition !== "") {
+      const currentCondition = sortCondition.split("-")[0];
+      const modifier = sortCondition.split("-")[1];
+
+      if (currentCondition === condition) {
+        if (modifier === "ASCENDING") arrow = 1;
+        else arrow = -1;
+      }
+    }
+    return (
+      <div className="flex flex-row items-center justify-center">
+        <p>{header}</p>
+        <div className="cursor-pointer">
+          {arrow === 0 ? (
+            <BiSolidSortAlt />
+          ) : arrow === 1 ? (
+            <BiSolidUpArrow />
+          ) : (
+            <BiSolidDownArrow />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -245,7 +281,7 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   return (
     <div className="flex flex-col max-h-screen min-h-0 max-w-full">
       <div>
-        <h1 className="text-3xl md:text-5xl font-bold text-center">
+        <h1 className="text-3xl mt-5 md:text-5xl font-bold text-center">
           Permisjonssøknader
         </h1>
         <div className="flex flex-row justify-center gap-3 md:my-5">
@@ -309,24 +345,24 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
         onClose={closeDialog}
       />
       <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-8/10 overflow-y-auto overflow-x-auto max-w-full">
-        <table className="table-fixed text-sm border-collapse">
+        <table className="table-auto w-full text-sm border-collapse">
           <thead>
             <tr className="bg-eo-lblue sticky top-0">
               <th></th>
-              <th className="rounded-tl-sm px-3 py-2">ID</th>
-              <th className="px-3 py-2">Navn</th>
-              <th className="px-3 py-2">Skiltnr.</th>
-              <th className="px-3 py-2">E-post</th>
-              <th className="px-3 py-2">Deltakertype</th>
-              <th className="px-3 py-2">Tlf.</th>
-              <th className="px-3 py-2">Fylke</th>
-              <th className="px-3 py-2">Fra</th>
-              <th className="px-3 py-2">Til</th>
-              <th className="px-3 py-2">Årsak</th>
-              <th className="px-3 py-2">Har observatør</th>
-              <th className="px-3 py-2">Observatør navn</th>
-              <th className="px-3 py-2">Observatør skiltnr.</th>
-              <th className="rounded-tr-sm px-3 py-2">Observatør tlf.</th>
+              <th className="rounded-tl-sm">{tableHeader("ID", "ID")}</th>
+              <th>{tableHeader("Navn", "NAME")}</th>
+              <th>{tableHeader("Skiltnr.", "PARTICIPANT_ID")}</th>
+              <th>{tableHeader("E-post", "EMAIL")}</th>
+              <th>{tableHeader("Deltakertype", "TYPE")}</th>
+              <th>{tableHeader("Tlf", "TEL")}</th>
+              <th>{tableHeader("Fylke", "COUNTY")}</th>
+              <th>{tableHeader("Fra", "FROM")}</th>
+              <th>{tableHeader("Til", "TO")}</th>
+              <th>{tableHeader("Årsak", "REASON")}</th>
+              <th>{tableHeader("Har observatør", "HAS_OBSERVER")}</th>
+              <th>{tableHeader("Observatør navn", "OBSERVER_NAME")}</th>
+              <th>{tableHeader("Observatør skiltnr.", "OBSERVER_ID")}</th>
+              <th>{tableHeader("Observatør tlf.", "OBSERVER_TEL")}</th>
             </tr>
           </thead>
           <tbody>
@@ -374,7 +410,7 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
                     </td>
                     <td className="px-3 py-2">
                       {caseItem.formReply?.has_observer ? (
-                        <BiCheckboxChecked className="m-auto size-6" />
+                        <BiSolidCheckboxChecked className="m-auto size-6" />
                       ) : (
                         <BiCheckbox className="m-auto size-6" />
                       )}

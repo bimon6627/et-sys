@@ -284,6 +284,7 @@ export default function CaseDialog({
     }
     setIsSubmittingReview(true);
     caseData.reviewedAt = new Date();
+    caseData.reviewedBy = session?.user.email;
 
     const res = await fetch("/api/cases", {
       method: "PATCH",

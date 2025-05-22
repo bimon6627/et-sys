@@ -1,6 +1,7 @@
 import { CaseWithFormReply } from "@/types/case";
 import GetCaseStatus from "./ts/get-case-status";
 import {
+  BiPlusMedical,
   BiSolidCheckCircle,
   BiSolidCircle,
   BiSolidErrorCircle,
@@ -10,22 +11,39 @@ import {
 
 export default function getStatusSymbol(data: CaseWithFormReply) {
   const status = GetCaseStatus(data);
+  const hms = data.hmsFlag;
   const classNameString = "size-6";
   switch (status) {
     case "ACTIVE":
-      return (
+      return hms ? (
+        <BiPlusMedical className={"text-green-600 " + classNameString} />
+      ) : (
         <BiSolidCheckCircle className={"text-green-600 " + classNameString} />
       );
     case "SCHEDULED":
-      return <BiSolidTime className={"text-emerald-400 " + classNameString} />;
+      return hms ? (
+        <BiPlusMedical className={"text-emerald-400 " + classNameString} />
+      ) : (
+        <BiSolidTime className={"text-emerald-400 " + classNameString} />
+      );
     case "EXPIRED":
-      return (
+      return hms ? (
+        <BiPlusMedical className={"text-gray-500 " + classNameString} />
+      ) : (
         <BiSolidCheckCircle className={"text-gray-500 " + classNameString} />
       );
     case "PENDING":
-      return <BiSolidCircle className={"text-amber-300 " + classNameString} />;
+      return hms ? (
+        <BiPlusMedical className={"text-amber-300 " + classNameString} />
+      ) : (
+        <BiSolidCircle className={"text-amber-300 " + classNameString} />
+      );
     case "REJECTED":
-      return <BiSolidXCircle className={"text-red-600 " + classNameString} />;
+      return hms ? (
+        <BiPlusMedical className={"text-red-600 " + classNameString} />
+      ) : (
+        <BiSolidXCircle className={"text-red-600 " + classNameString} />
+      );
     case "ERROR":
       return (
         <BiSolidErrorCircle className={"text-orange-500 " + classNameString} />

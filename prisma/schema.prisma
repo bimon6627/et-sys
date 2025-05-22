@@ -44,6 +44,7 @@ model Case {
   reviewedById    Int?
   reviewedBy      String?
   reviewedAt      DateTime?
+  hmsFlag         Boolean           @default(false)
 }
 
 model Config {
