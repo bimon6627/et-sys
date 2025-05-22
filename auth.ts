@@ -1,9 +1,10 @@
+// auth.ts
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
 import { prisma } from "./lib/prisma";
 
-const config: NextAuthConfig = {
+const config = {
   providers: [
     Google({
       clientId: process.env.GOOGLE_ID as string,
@@ -14,37 +15,34 @@ const config: NextAuthConfig = {
     signIn: "/",
   },
   callbacks: {
-    // This callback runs when the JWT is created or updated
-    async jwt({ token, user, account }) {
-      console.log("ACCOUNT OBJECT:", account);
-      // Only fetch the user role if logging in
-      if (user && account) {
+    async jwt({ token, user }) {
+      // User and account are only present on the initial sign in
+      if (user) {
+        // Fetch user role from your database
         const userRecord = await prisma.whitelist.findUnique({
           where: { email: user.email as string },
         });
 
         if (userRecord) {
-          token.role = userRecord.role;
-          token.email = userRecord.email;
+          token.role = userRecord.role; // Add role to the JWT
+          token.email = userRecord.email; // Add email to the JWT
         }
 
-        // Save the access token on first login
-        if (account.access_token) {
-          token.accessToken = account.access_token;
-        }
+        // IMPORTANT: Do NOT store account.access_token here unless you have a strong reason
+        // and understand its implications (lifetime, refresh strategy).
+        // It's a Google token, not your app's session token.
+        // Your app's session token is the JWT itself.
       }
-
-      // Ensure accessToken persists across sessions
-      return token;
+      return token; // The `token` object itself is your NextAuth.js JWT payload
     },
 
-    // This callback runs when the session is created or accessed
     async session({ session, token }) {
-      // Attach the role and email from the token to the session
       if (token) {
-        session.user.role = token.role as string; // Attach role from token to session
-        session.user.email = token.email as string; // Attach email from token to session
-        session.accessToken = token.accessToken as string;
+        session.user.role = token.role as string;
+        session.user.email = token.email as string;
+        // The session object passed to the client is now enriched with role and email.
+        // You generally don't need a `session.accessToken` if you're using `auth()` helper
+        // or just checking `session.user` existence.
       }
       return session;
     },
@@ -53,21 +51,29 @@ const config: NextAuthConfig = {
       const unauthorized = "/unauthorized";
       if (!profile) return unauthorized;
 
-      // Check if the user's email is in the whitelist
       const user = await prisma.whitelist.findUnique({
         where: { email: profile.email as string },
       });
 
-      return !!user || unauthorized; // Return true if user is in whitelist, else redirect to unauthorized
+      return !!user || unauthorized;
     },
 
-    // Check if the user is authorized to view certain pages
     authorized({ request, auth }) {
       const { pathname } = request.nextUrl;
-      if (pathname.includes("/dashboard")) return !!auth; // Only allow access to dashboard if user is authenticated
-      return true;
+      // Example authorization logic:
+      if (pathname.startsWith("/admin")) {
+        // For admin pages, user must be authenticated AND have 'admin' role
+        return !!auth && auth.user.role === "admin"; // Assumes 'admin' is the role name
+      }
+      if (pathname.includes("/dashboard")) return !!auth; // Simply authenticated
+      return true; // Allow access to all other paths
     },
   },
+  session: {
+    strategy: "jwt", // Explicitly use JWT strategy for session management
+  },
+  // Optionally, you can add a secret for JWT signing in production
+  // secret: process.env.NEXTAUTH_SECRET,
 } satisfies NextAuthConfig;
 
 export const { handlers, auth, signIn, signOut } = NextAuth(config);

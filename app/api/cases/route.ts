@@ -1,13 +1,15 @@
 // app/api/cases.ts
-import { prisma } from "@/lib/prisma"; // import your Prisma client
+import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { getToken } from "next-auth/jwt";
+// import { getToken } from "next-auth/jwt"; // Remove this line
+import { auth } from "@/auth"; // Import the auth helper from your auth.ts file (adjust path if needed)
+import { NextResponse } from "next/server"; // Import NextResponse for better JSON responses
 
-const secret = process.env.AUTH_SECRET;
+// const secret = process.env.AUTH_SECRET; // No longer needed if using auth()
 
 // Define the handler for the POST request
 export async function POST() {
-  return new Response(JSON.stringify({ error: "Method not allowed." }), {
+  return new NextResponse(JSON.stringify({ error: "Method not allowed." }), {
     status: 405,
     headers: { "Content-Type": "application/json" },
   });
@@ -15,36 +17,40 @@ export async function POST() {
 
 export async function PATCH(req: Request) {
   try {
-    const token = await getToken({ req, secret });
-    if (!token) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    // Authenticate using the auth() helper
+    const session = await auth();
+
+    if (!session) {
+      return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    if (token.role !== "ADMIN" && token.role !== "KONKOM") {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+    // Access the role directly from session.user
+    if (session.user.role !== "ADMIN" && session.user.role !== "KONKOM") {
+      return new NextResponse(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { "Content-Type": "application/json" },
       });
     }
 
     const body = await req.json();
-    const {
-      id,
-      //id_swapped,
-      status,
-      reason_rejected,
-      //comment,
-      reviewedBy,
-      reviewedAt,
-      //reviewedById,
-    } = body;
-    const boolStatus = status === "null" ? null : status === "true";
+    const { id, status, reason_rejected, reviewedBy, reviewedAt } = body;
+
+    // Type casting for status (ensure it matches your Prisma schema for `status` field)
+    const boolStatus: boolean | null =
+      status === "null" ? null : status === "true";
+    // Ensure `id` is a number for Prisma update where clause if it's an Int field
+    const caseId = parseInt(id, 10);
+    if (isNaN(caseId)) {
+      return new NextResponse(JSON.stringify({ error: "Invalid ID format" }), {
+        status: 400,
+      });
+    }
 
     await prisma.case.update({
-      where: { id: id },
+      where: { id: caseId }, // Use parsed ID
       data: {
         status: boolStatus,
         reason_rejected: reason_rejected,
@@ -52,13 +58,21 @@ export async function PATCH(req: Request) {
         reviewedAt: reviewedAt,
       },
     });
-    return new Response(JSON.stringify({ success: true }), {
+
+    return new NextResponse(JSON.stringify({ success: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ error: error }), {
+  } catch (error: unknown) {
+    // Use 'unknown' for error type
+    console.error("Error in PATCH /api/cases:", error);
+    let errorMessage = "An unexpected error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "string") {
+      errorMessage = error;
+    }
+    return new NextResponse(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
@@ -67,22 +81,26 @@ export async function PATCH(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status");
-    const token = await getToken({ req, secret });
-    if (!token) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    // Authenticate using the auth() helper
+    const session = await auth();
+
+    if (!session) {
+      return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    if (token.role !== "ADMIN" && token.role !== "KONKOM") {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+    // Access the role directly from session.user
+    if (session.user.role !== "ADMIN" && session.user.role !== "KONKOM") {
+      return new NextResponse(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
 
     const commonInclude = {
       include: {
@@ -90,7 +108,7 @@ export async function GET(req: Request) {
       },
     };
 
-    const whereClause: Prisma.CaseWhereInput = {}; // NEW line
+    const whereClause: Prisma.CaseWhereInput = {};
     const now = new Date();
 
     switch (status) {
@@ -147,7 +165,7 @@ export async function GET(req: Request) {
       case "ALL":
         break;
       default:
-        return new Response(
+        return new NextResponse(
           JSON.stringify({
             error:
               "Invalid or missing 'status' query parameter. Use 'ALL', 'APPROVED', 'ACTIVE', 'SCHEDULED', 'PENDING', or 'REJECTED'.",
@@ -165,21 +183,29 @@ export async function GET(req: Request) {
     });
 
     if (cases) {
-      // Send a successful response with the fetched value
-      return new Response(JSON.stringify({ success: true, value: cases }), {
+      return new NextResponse(JSON.stringify({ success: true, value: cases }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     } else {
-      return new Response(JSON.stringify({ error: "No cases found." }), {
-        status: 404,
+      // While it's unlikely for findMany to return null,
+      // it's possible if the data.value is empty, but not a true 404
+      return new NextResponse(JSON.stringify({ success: true, value: [] }), {
+        // Return empty array for no cases found
+        status: 200, // Still 200 OK, just no data
         headers: { "Content-Type": "application/json" },
       });
     }
-  } catch (error) {
-    console.error("Error fetching cases:", error);
-    console.error(error);
-    return new Response(JSON.stringify({ error: error }), {
+  } catch (error: unknown) {
+    // Use 'unknown' for error type
+    console.error("Error in GET /api/cases:", error);
+    let errorMessage = "An unexpected error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "string") {
+      errorMessage = error;
+    }
+    return new NextResponse(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

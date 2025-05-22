@@ -290,7 +290,6 @@ export default function CaseDialog({
       body: JSON.stringify(caseData),
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.accessToken}`,
       },
     });
 
@@ -314,7 +313,6 @@ export default function CaseDialog({
       body: JSON.stringify(form),
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.accessToken}`,
       },
     });
 
