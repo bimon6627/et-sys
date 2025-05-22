@@ -4,6 +4,7 @@ import { BiCheckbox, BiCheckboxChecked, BiError } from "react-icons/bi";
 import { CaseWithFormReply } from "@/types/case";
 import CaseDialog from "./case-dialog";
 import getStatusSymbol from "./status-symbol";
+import { useSession } from "next-auth/react";
 
 interface User {
   name?: string | undefined;
@@ -35,8 +36,10 @@ function getDateString(inDate: Date) {
 
 export default function CaseTable({ user, initialCases }: CaseTableProps) {
   // Make this a regular synchronous function
+
+  const { data: session } = useSession();
   const [cases, setCases] = useState(initialCases); // Use state for cases
-  const [activeButton, setActiveButton] = useState("Alle");
+  const [activeButton, setActiveButton] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -45,6 +48,17 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
   const titleRef = useRef<HTMLDivElement>(null); // Assuming your buttons are in a div
   const headerRef = useRef<HTMLTableSectionElement>(null);
   const scrollableBodyRef = useRef<HTMLDivElement>(null);
+  const activeButtonRef = useRef(activeButton);
+  const sessionRef = useRef(session);
+
+  useEffect(() => {
+    activeButtonRef.current = activeButton;
+    fetchNewCases();
+  }, [activeButton]);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   const openDialog = (caseData: CaseWithFormReply) => {
     setDialogData(caseData);
@@ -62,47 +76,63 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
     }
   }, [user]);
 
-  useEffect(() => {
-    const fetchNewCases = async () => {
-      try {
-        const response = await fetch("/api/cases");
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.success && Array.isArray(data.value)) {
-          // Convert date strings to Date objects
-          const processedCases = data.value.map(
-            (caseItem: CaseWithFormReply) => ({
-              ...caseItem,
-              formReply: caseItem.formReply
-                ? {
-                    ...caseItem.formReply,
-                    from: caseItem.formReply.from
-                      ? new Date(caseItem.formReply.from)
-                      : null,
-                    to: caseItem.formReply.to
-                      ? new Date(caseItem.formReply.to)
-                      : null,
-                  }
-                : null,
-            })
-          );
-          setCases(processedCases);
-        } else {
-          console.error("Failed to fetch cases correctly:", data);
-          setError("Failed to fetch cases.");
-        }
-      } catch (error: any) {
-        console.error("Failed to fetch new cases:", error);
-        setError(error.message);
+  const fetchNewCases = async () => {
+    const condition = activeButtonRef.current;
+    const url = `/api/cases?status=${condition}`;
+    console.log(sessionRef.current?.accessToken);
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionRef.current?.accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+      const data = await response.json();
+      if (data.success && Array.isArray(data.value)) {
+        // Convert date strings to Date objects
+        const processedCases = data.value.map(
+          (caseItem: CaseWithFormReply) => ({
+            ...caseItem,
+            formReply: caseItem.formReply
+              ? {
+                  ...caseItem.formReply,
+                  from: caseItem.formReply.from
+                    ? new Date(caseItem.formReply.from)
+                    : null,
+                  to: caseItem.formReply.to
+                    ? new Date(caseItem.formReply.to)
+                    : null,
+                }
+              : null,
+          })
+        );
+        setCases(processedCases);
+      } else {
+        console.error("Failed to fetch cases correctly:", data);
+        setError("Failed to fetch cases.");
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch new cases:", error);
+      setError(error.message);
+    }
+  };
 
-    const intervalId = setInterval(fetchNewCases, 5000);
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    const intervalId = setInterval(() => {
+      const currentSession = sessionRef.current;
+      console.log("Interval fetch with sessionRef:", currentSession);
+      if (!currentSession?.accessToken) return;
+      fetchNewCases();
+    }, 5000);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     const calculateMaxHeight = () => {
@@ -130,7 +160,6 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
 
   const handleButtonClick = (buttonName: string) => {
     setActiveButton(buttonName);
-    // Implement filtering logic here if needed
   };
 
   if (loading) {
@@ -145,7 +174,64 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
 
   if (error) {
     return (
-      <div className="flex items-center h-full w-full">
+      <div className="flex flex-col max-h-screen min-h-0 max-w-full">
+        <div>
+          <h1 className="text-3xl md:text-5xl font-bold text-center">
+            Permisjonssøknader
+          </h1>
+          <div className="flex flex-row justify-center gap-3 md:my-5">
+            <button
+              className={` ${
+                activeButton === "ALL" ? "underline " : "hover:opacity-50"
+              }`}
+              onClick={() => handleButtonClick("ALL")}
+            >
+              Alle
+            </button>
+            <button
+              className={` ${
+                activeButton === "REQUIRE_ACTION"
+                  ? "underline"
+                  : "hover:opacity-50"
+              }`}
+              onClick={() => handleButtonClick("REQUIRE_ACTION")}
+            >
+              Krever handling
+            </button>
+            <button
+              className={` ${
+                activeButton === "PENDING" ? "underline " : "hover:opacity-50"
+              }`}
+              onClick={() => handleButtonClick("PENDING")}
+            >
+              Ikke behandlet
+            </button>
+            <button
+              className={` ${
+                activeButton === "APPROVED" ? "underline " : "hover:opacity-50"
+              }`}
+              onClick={() => handleButtonClick("APPROVED")}
+            >
+              Godkjent
+            </button>
+            <button
+              className={` ${
+                activeButton === "REJECTED" ? "underline " : "hover:opacity-50"
+              }`}
+              onClick={() => handleButtonClick("REJECTED")}
+            >
+              Avvist
+            </button>
+            <button
+              className={` ${
+                activeButton === "EXPIRED" ? "underline " : "hover:opacity-50"
+              }`}
+              onClick={() => handleButtonClick("EXPIRED")}
+            >
+              Utgått
+            </button>
+          </div>
+        </div>
         <div className="flex flex-row items-center rounded-3xl bg-yellow-400">
           <BiError className="size-[500px]" />
           <p className="text-5xl font-bold">
@@ -165,51 +251,51 @@ export default function CaseTable({ user, initialCases }: CaseTableProps) {
         <div className="flex flex-row justify-center gap-3 md:my-5">
           <button
             className={` ${
-              activeButton === "Alle" ? "underline " : "hover:opacity-50"
+              activeButton === "ALL" ? "underline " : "hover:opacity-50"
             }`}
-            onClick={() => handleButtonClick("Alle")}
+            onClick={() => handleButtonClick("ALL")}
           >
             Alle
           </button>
           <button
             className={` ${
-              activeButton === "Krever handling"
+              activeButton === "REQUIRE_ACTION"
                 ? "underline"
                 : "hover:opacity-50"
             }`}
-            onClick={() => handleButtonClick("Krever handling")}
+            onClick={() => handleButtonClick("REQUIRE_ACTION")}
           >
             Krever handling
           </button>
           <button
             className={` ${
-              activeButton === "Venter" ? "underline " : "hover:opacity-50"
+              activeButton === "PENDING" ? "underline " : "hover:opacity-50"
             }`}
-            onClick={() => handleButtonClick("Venter")}
+            onClick={() => handleButtonClick("PENDING")}
           >
-            Venter
+            Ikke behandlet
           </button>
           <button
             className={` ${
-              activeButton === "Godkjent" ? "underline " : "hover:opacity-50"
+              activeButton === "APPROVED" ? "underline " : "hover:opacity-50"
             }`}
-            onClick={() => handleButtonClick("Godkjent")}
+            onClick={() => handleButtonClick("APPROVED")}
           >
             Godkjent
           </button>
           <button
             className={` ${
-              activeButton === "Avvist" ? "underline " : "hover:opacity-50"
+              activeButton === "REJECTED" ? "underline " : "hover:opacity-50"
             }`}
-            onClick={() => handleButtonClick("Avvist")}
+            onClick={() => handleButtonClick("REJECTED")}
           >
             Avvist
           </button>
           <button
             className={` ${
-              activeButton === "Utgått" ? "underline " : "hover:opacity-50"
+              activeButton === "EXPIRED" ? "underline " : "hover:opacity-50"
             }`}
-            onClick={() => handleButtonClick("Utgått")}
+            onClick={() => handleButtonClick("EXPIRED")}
           >
             Utgått
           </button>

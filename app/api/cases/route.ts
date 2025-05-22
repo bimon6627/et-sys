@@ -66,6 +66,8 @@ export async function PATCH(req: Request, res: Response) {
 
 export async function GET(req: Request, res: Response) {
   try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
     const token = await getToken({ req, secret });
     if (!token) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -80,15 +82,90 @@ export async function GET(req: Request, res: Response) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const allCases = await prisma.case.findMany({
+
+    const commonInclude = {
       include: {
         formReply: true, // This tells Prisma to also fetch the related FormReply data
       },
+    };
+
+    let whereClause: any = {};
+    const now = new Date();
+
+    switch (status) {
+      case "APPROVED":
+        whereClause.status = true;
+        whereClause.formReply = {
+          to: {
+            gt: now,
+          },
+        };
+        break;
+      case "ACTIVE":
+        whereClause.status = true;
+        whereClause.formReply = {
+          AND: [
+            {
+              from: {
+                lt: now,
+              },
+            },
+            {
+              to: {
+                gt: now,
+              },
+            },
+          ],
+        };
+        break;
+      case "SCHEDULED":
+        whereClause.status = true;
+        whereClause.formReply = {
+          from: {
+            gt: now,
+          },
+        };
+        break;
+      case "EXPIRED":
+        whereClause.status = true;
+        whereClause.formReply = {
+          to: {
+            lt: now,
+          },
+        };
+        break;
+      case "REJECTED":
+        whereClause.status = false;
+        break;
+      case "PENDING":
+        whereClause.status = null;
+        break;
+      case "REQUIRE_ACTION":
+        //Not implemented yet
+        break;
+      case "ALL":
+        break;
+      default:
+        return new Response(
+          JSON.stringify({
+            error:
+              "Invalid or missing 'status' query parameter. Use 'ALL', 'APPROVED', 'ACTIVE', 'SCHEDULED', 'PENDING', or 'REJECTED'.",
+          }),
+          {
+            status: 400, // Bad Request
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+    }
+
+    const cases = await prisma.case.findMany({
+      where: whereClause,
+      ...commonInclude,
     });
 
-    if (allCases) {
+    if (cases) {
       // Send a successful response with the fetched value
-      return new Response(JSON.stringify({ success: true, value: allCases }), {
+      return new Response(JSON.stringify({ success: true, value: cases }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });

@@ -27,7 +27,7 @@ const config: NextAuthConfig = {
           // Attach the role to the JWT token
           token.role = userRecord.role;
           token.email = userRecord.email;
-          token.accessToken = account.access_Token;
+          token.accessToken = account.access_token;
         }
       }
       return token;
