@@ -2,16 +2,17 @@
 
 import { BiMenu, BiX } from "react-icons/bi";
 import { useState } from "react";
-import AuthorizedNavlinks from "./authorized-navlinks";
 import SignOut from "./sign-out";
 
-interface AuthorizedNavlinksProps {
-  role: string; // The role is expected to be a string
+interface NavbarAuthorizedHamburgerProps {
+  navlinks: React.ReactNode; // This is the "slot" for your Server Component content
+  // You no longer need to pass `role` directly to the hamburger,
+  // as the role is handled by the `navlinks` content itself.
 }
 
 export default function NavbarAuthorizedHamburger({
-  role,
-}: AuthorizedNavlinksProps) {
+  navlinks,
+}: NavbarAuthorizedHamburgerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -28,7 +29,7 @@ export default function NavbarAuthorizedHamburger({
           isOpen ? "block" : "hidden"
         } absolute top-full left-0 bg-white shadow-md rounded-md z-10 w-full`}
       >
-        <AuthorizedNavlinks role={role} />
+        {navlinks}
         <SignOut />
       </div>
     </div>
