@@ -325,6 +325,24 @@ export default function CaseDialog({
     }
   };
 
+  const handleDelete = async () => {
+    if (confirm("Er du sikker på at du vil slette denne permisjonssøknaden?")) {
+      const res = await fetch("/api/cases", {
+        method: "DELETE",
+        body: JSON.stringify(caseData.id),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        onClose();
+      } else {
+        alert("En feil oppsto under slettingen.");
+      }
+    }
+  };
+
   const handleCancel = () => {
     // Reset form to initial data when cancelling edit
     if (data?.formReply) {
@@ -911,6 +929,14 @@ export default function CaseDialog({
                 className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 sm:mt-0 sm:w-auto"
               >
                 {isEditing ? "Avbryt" : "Lukk"}
+              </button>
+              <button
+                type="button"
+                data-autofocus
+                onClick={handleDelete} // Use handleCancel to revert changes and close
+                className="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-xs mr-auto sm:w-auto bg-red-500 hover:bg-red-400"
+              >
+                Slett
               </button>
             </div>
           </DialogPanel>

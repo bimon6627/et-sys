@@ -79,6 +79,63 @@ export async function PATCH(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    // Authenticate using the auth() helper
+    const session = await auth();
+
+    if (!session) {
+      return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Access the role directly from session.user
+    if (session.user.role !== "ADMIN" && session.user.role !== "KONKOM") {
+      return new NextResponse(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const caseId = await req.json();
+
+    const currentCase = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: { formReply: true },
+    });
+
+    const formReplyID = currentCase?.formReply.id;
+
+    await prisma.case.delete({
+      where: { id: caseId },
+    });
+
+    await prisma.formReply.delete({
+      where: { id: formReplyID },
+    });
+
+    return new NextResponse(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error: unknown) {
+    // Use 'unknown' for error type
+    console.error("Error in DELETE /api/cases:", error);
+    let errorMessage = "An unexpected error occurred.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "string") {
+      errorMessage = error;
+    }
+    return new NextResponse(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
+
 export async function GET(req: Request) {
   try {
     // Authenticate using the auth() helper
