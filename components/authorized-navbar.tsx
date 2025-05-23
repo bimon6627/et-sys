@@ -11,7 +11,9 @@ export default async function NavbarAuthorized() {
 
   return (
     <nav>
-      <NavbarAuthorizedHamburger role={role} />
+      <NavbarAuthorizedHamburger
+        navlinks={<AuthorizedNavlinks role={role} />}
+      />
       <div className="hidden md:flex sticky flex-col gap-2 top-0 h-screen bg-gray-100 p-2">
         <AuthorizedNavlinks role={role} />
         <div className="mt-auto gap-2 flex flex-col mb-10">
