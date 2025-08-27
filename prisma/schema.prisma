@@ -7,10 +7,42 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Whitelist {
-  id       Int      @id @default(autoincrement())
-  email    String   @unique
-  role     Role
+model User {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  protected Boolean @default(false)
+  region    Region  @relation(fields: [regionId], references: [id])
+  regionId  Int
+  role      Role    @relation(fields: [roleId], references: [id])
+  roleId    Int
+}
+
+model Region {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+
+  users       User[]
+  conferences Conference[]
+}
+
+model Role {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  protected Boolean @default(false)
+  permissions String[]
+
+  users User[] 
+}
+
+model Conference {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  startDate DateTime
+  endDate   DateTime
+  region    Region  @relation(fields: [regionId], references: [id])
+  regionId  Int
+  attendees Attendee[]
+  
 }
 
 model FormReply {
@@ -47,20 +79,86 @@ model Case {
   hmsFlag         Boolean           @default(false)
 }
 
+model Attendee {
+  id              Int @id @default(autoincrement())
+  registeredAt    DateTime
+  name            String
+  dob             DateTime
+
+  checkedIn       Boolean @default(false)
+  type            ParticipantType
+
+  // Contact info
+  tel             String
+  email           String  @unique
+
+  //Parental details
+  parentName      String
+  parentEmail     String
+  parentTel       String
+
+  // Sensitive fields
+  hasAllergy      Boolean
+  hasHyperAllergy Boolean
+  allergyText     String?
+  otherDetails    String?
+
+  // Organization details
+  organizationContactName   String
+  organizationContactEmail  String
+  organizationContactTel    String
+  
+  organizationId  Int
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  Conference Conference[]
+}
+
+model OrganizationDocument{
+  id    Int @id @default(autoincrement())
+  url   String @unique
+  name  String
+}
+
+model Organization {
+  id           Int     @id @default(autoincrement())
+  name         String  @unique // Example: Add a name field for organizations
+  delegation   Attendee[]
+
+  organizationGroupId Int
+  organizationGroup OrganizationGroup @relation(fields: [organizationGroupId], references: [id])
+}
+
+model OrganizationGroup {
+  id   Int    @id @default(autoincrement())
+  name String @unique // Example: Add a name field for groups
+  organizationsCanVote  Boolean
+
+  // This is the relation field. It represents the "many" side of the relationship.
+  // A single OrganizationGroup can have many Organizations.
+  organizations Organization[]
+}
+
 model Config {
   id    Int  @id @default(autoincrement())
   key   String @unique
   value String
 }
 
-enum Role {
-  ADMIN
-  KONKOM
-  SEK
-  SST
-}
+//enum Role {
+//  ADMIN
+//  KONKOM
+//  SEK
+//  SST
+//}
 
 enum ParticipantType {
   DELEGATE
   OBSERVER
+}
+
+enum AttendeeDocumentStatusType {
+  AWAITING
+  FIRST
+  FINAL
 }

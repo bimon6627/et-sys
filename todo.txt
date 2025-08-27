@@ -1,0 +1,9 @@
+TODO:
+
+- Registration
+- Checkin
+- HMS
+- Forslag
+    - Grunndoks
+    - Forb/Redkom
+    - Forslagsblekke

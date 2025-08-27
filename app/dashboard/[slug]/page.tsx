@@ -1,0 +1,31 @@
+import React from "react";
+import GetUserInfo from "@/components/js/get-user-info";
+import NavbarAuthorized from "@/components/authorized-navbar";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
+
+interface Props {
+  params: {
+    slug: string;
+  };
+}
+
+export default async function Dashboard({ params }: Props) {
+  const { slug } = params; // 'slug' matches the dynamic segment name
+  const user = await GetUserInfo();
+  return (
+    <div className="bg-white min-w-screen min-h-screen md:flex flex-row">
+      <NavbarAuthorized />
+      <main className="flex flex-row flex-grow items-center justify-center w-full h-full p-6 md:p-10">
+        <div className="w-1/2 space-y-3 top-20">
+          <h1 className="text-3xl md:text-5xl font-bold text-center">{slug}</h1>
+          <div>Hey there {user?.name ?? ""}!</div>
+          <p>Role: {user?.role ?? ""}</p>
+        </div>
+      </main>
+    </div>
+  );
+}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   BiLayout,
   BiColumns,
@@ -12,93 +13,96 @@ import {
 } from "react-icons/bi";
 
 interface AuthorizedNavlinksProps {
+  slug: string;
   role: string; // The role is expected to be a string
 }
 
 export default async function AuthorizedNavlinks({
+  slug,
   role,
 }: AuthorizedNavlinksProps) {
+  const prefix = "/dashboard/" + slug + "/";
   return (
     <div>
       <div className="flex flex-col border-b py-2 gap-2">
-        <a
-          href="/dashboard"
+        <Link
+          href={prefix}
           className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiLayout />
           Dashboard
-        </a>
-        <a
-          href="/dashboard/soknader"
+        </Link>
+        <Link
+          href={prefix + "soknader"}
           className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiColumns />
           Permisjonssøknader
-        </a>
-        <a
-          href="/dashboard/permisjonssoknad"
+        </Link>
+        <Link
+          href={prefix + "permisjonssoknad"}
           className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiFile />
           Permisjonsskjema
-        </a>
-        <a
-          href="/dashboard"
+        </Link>
+        <Link
+          href={prefix}
           className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiPlusMedical />
           HMS
-        </a>
-        <a
-          href="/dashboard"
+        </Link>
+        <Link
+          href={prefix}
           className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiUser />
           Deltakere
-        </a>
+        </Link>
       </div>
       <div className="flex flex-col border-b py-2 gap-2">
-        <a
+        <Link
           href="/dashboard"
           className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiCommentDetail />
           Debatt
-        </a>
-        <a
+        </Link>
+        <Link
           href="/dashboard"
           className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiMobileAlt />
           Digital votering
-        </a>
+        </Link>
       </div>
       <div className="flex flex-col border-b py-2 gap-2">
-        <a
+        <Link
           href="/dashboard"
           className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiCog />
           Innstillinger
-        </a>
+        </Link>
         {role == "ADMIN" ? (
-          <a
+          <Link
             href="/dashboard/admin"
             className="flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
           >
             <BiShield />
             Admin
-          </a>
+          </Link>
         ) : (
           <></>
         )}
-        <a
+        <Link
           href="/dashboard"
           className="line-through flex items-center w-full text-gray-700 hover:bg-gray-200 hover:text-gray-900 gap-1 pl-1 pr-2 py-1 rounded transition-colors"
         >
           <BiInfoCircle />
           Hjelp
-        </a>
+        </Link>
       </div>
     </div>
   );
