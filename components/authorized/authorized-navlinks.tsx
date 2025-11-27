@@ -5,9 +5,6 @@ import {
   BiFile,
   BiPlusMedical,
   BiUser,
-  BiCommentDetail,
-  BiMobileAlt,
-  BiCog,
   BiShield,
   BiInfoCircle,
 } from "react-icons/bi";
