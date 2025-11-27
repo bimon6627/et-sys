@@ -33,7 +33,7 @@ export async function sendEmail({
       return { success: true, skipped: true }; // Return success so the UI doesn't show an error
     }
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: `"Elevtinget" <${process.env.GMAIL_FROM}>`,
       to,
       subject,
