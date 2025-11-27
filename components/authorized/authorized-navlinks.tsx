@@ -50,11 +50,6 @@ const NAV_GROUPS: NavItem[][] = [
     },
   ],
   [
-    { label: "Debatt", href: "#", icon: BiCommentDetail, disabled: true },
-    { label: "Digital votering", href: "#", icon: BiMobileAlt, disabled: true },
-  ],
-  [
-    { label: "Innstillinger", href: "#", icon: BiCog, disabled: true },
     // 3. The Dynamic Check: This only appears if user has 'admin:view'
     {
       label: "Admin",

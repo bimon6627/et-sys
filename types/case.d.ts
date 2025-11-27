@@ -30,7 +30,7 @@ interface CaseWithFormReply {
   reviewedBy?: string | null;
   reviewedAt?: Date | null;
   formReply?: FormReply | null; // Make formReply optional AND nullable
-  hmsFlag: Boolean;
+  hmsFlag: boolean;
 }
 
 export type { CaseWithFormReply, FormReply };
