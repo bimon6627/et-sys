@@ -9,6 +9,13 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://localhost:3000";
+};
+
 export async function sendEmail({
   to,
   subject,
@@ -34,13 +41,23 @@ export async function sendEmail({
       return { success: true, skipped: true }; // Return success so the UI doesn't show an error
     }
 
+    const processedAttachments = attachments?.map((att) => {
+      if (att.path && att.path.startsWith("/")) {
+        return {
+          ...att,
+          path: `${getBaseUrl()}${att.path}`, // e.g. https://myapp.com/assets/EOlogo.png
+        };
+      }
+      return att;
+    });
+
     const info = await transporter.sendMail({
       from: `"Elevtinget" <${process.env.GMAIL_FROM}>`,
       to,
       subject,
       text,
       html: html || text, // Use text as HTML fallback if not provided
-      attachments: attachments,
+      attachments: processedAttachments,
     });
     console.log("Message sent: %s", info.messageId);
     return { success: true };

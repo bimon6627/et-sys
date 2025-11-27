@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { sendEmail } from "@/lib/mail";
-import path from "path";
 
 // --- SECURITY HELPER ---
 async function checkPermission(permission: string) {
@@ -217,7 +216,7 @@ export async function reviewCase(
         attachments: [
           {
             filename: "EOlogo.png",
-            path: path.join(process.cwd(), "public", "assets", "EOlogo.png"),
+            path: "/assets/EOlogo.png",
             cid: "logo-image",
           },
         ],
