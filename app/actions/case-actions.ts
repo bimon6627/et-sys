@@ -23,7 +23,7 @@ export async function getFilteredCases(filter: string) {
   if (!session?.user?.permissions.includes("case:read")) return [];
 
   let whereClause: any = {};
-  let now = new Date();
+  const now = new Date();
   // Map frontend filter buttons to Database queries
   switch (filter) {
     case "REQUIRE_ACTION":

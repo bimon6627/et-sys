@@ -24,7 +24,7 @@ export async function createRegion(name: string, internal: boolean) {
     });
     revalidatePath("/dashboard/admin/regions");
     return { success: true };
-  } catch (e) {
+  } catch (_e) {
     return {
       success: false,
       message: "Kunne ikke opprette region. Navnet må være unikt.",
@@ -38,7 +38,7 @@ export async function deleteRegion(id: number) {
     await prisma.region.delete({ where: { id } });
     revalidatePath("/dashboard/admin/regions");
     return { success: true };
-  } catch (e) {
+  } catch (_e) {
     return {
       success: false,
       message:
@@ -61,7 +61,7 @@ export async function createOrganization(
     });
     revalidatePath("/dashboard/admin/regions");
     return { success: true };
-  } catch (e) {
+  } catch (_e) {
     return { success: false, message: "Kunne ikke opprette organisasjon." };
   }
 }
@@ -72,7 +72,7 @@ export async function deleteOrganization(id: number) {
     await prisma.organization.delete({ where: { id } });
     revalidatePath("/dashboard/admin/regions");
     return { success: true };
-  } catch (e) {
+  } catch (_e) {
     return {
       success: false,
       message: "Kan ikke slette organisasjon med tilknyttede deltakere.",

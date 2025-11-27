@@ -1,6 +1,6 @@
 "use client";
 
-import { DialogPanel, DialogTitle, Dialog } from "@headlessui/react";
+import { DialogTitle } from "@headlessui/react";
 import { useState, useEffect, useCallback } from "react";
 import {
   addHmsAction,
@@ -211,8 +211,6 @@ export default function HmsIncidentDialog({
   const [isLeaveEditing, setIsLeaveEditing] = useState(!incident.case); // Open edit if no case exists
 
   // 💡 STATE FOR LIVE PARTICIPANT SELECTION (used if user searches/selects new person)
-  const [selectedParticipant, setSelectedParticipant] =
-    useState<SearchResult | null>(null);
 
   // --- EFFECT: FETCH ACTIONS ---
   useEffect(() => {
@@ -225,8 +223,6 @@ export default function HmsIncidentDialog({
 
   // --- HANDLER: PARTICIPANT SELECTION (Updates internal details state) ---
   const handleParticipantSelect = (p: SearchResult | null) => {
-    setSelectedParticipant(p);
-
     // Update details state to reflect the selection
     setDetails((prev) => ({
       ...prev,
@@ -261,7 +257,7 @@ export default function HmsIncidentDialog({
       });
       setIsEditing(false);
       alert("Hendelsesdetaljer oppdatert!");
-    } catch (error) {
+    } catch (_error) {
       alert("Klarte ikke oppdatere hendelsesdetaljer.");
     } finally {
       setIsSubmitting(false);
@@ -279,7 +275,7 @@ export default function HmsIncidentDialog({
       const updatedActions = await getHmsActionsByIncident(incident.id);
       setActions(updatedActions as HmsAction[]);
       setNewActionText("");
-    } catch (error) {
+    } catch (_error) {
       alert("Klarte ikke legge til handling.");
     } finally {
       setIsSubmitting(false);

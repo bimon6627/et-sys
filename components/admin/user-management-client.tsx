@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BiEdit, BiTrash, BiUserX, BiUserCheck } from "react-icons/bi";
-import { deleteWhitelistUser } from "@/app/actions/user-actions";
+import { BiEdit, BiUserX } from "react-icons/bi";
 // ⚠️ Note: You'll need to implement deleteWhitelistUser in user-actions.ts
 
 // Since UserManagementClient might be used on its own, define simple types
@@ -21,19 +20,21 @@ interface UserManagementClientProps {
 
 export default function UserManagementClient({
   initialUsers,
-  allRoles,
-  allRegions,
-}: UserManagementClientProps) {
+}: //allRoles,
+//allRegions,
+UserManagementClientProps) {
   const [users, setUsers] = useState(initialUsers);
 
   // State for Dialog/Modal when editing a user
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  //const [isDialogOpen, setIsDialogOpen] = useState(false);
+  //const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
 
   const handleEdit = (user: UserListItem) => {
     // You would typically open a modal here to edit role/region
-    setEditingUser(user);
-    setIsDialogOpen(true);
+    //setEditingUser(user);
+    //setIsDialogOpen(true);
+    console.log(user);
+    return;
   };
 
   const handleDelete = async (id: number, email: string) => {

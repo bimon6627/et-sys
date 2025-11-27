@@ -27,11 +27,6 @@ export default function ParticipantsDashboard({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
 
-  const handleOpenDialog = (participant: any) => {
-    setSelectedParticipant(participant);
-    setIsDialogOpen(true);
-  };
-
   const handleCloseDialog = () => {
     setSelectedParticipant(null);
     setIsDialogOpen(false);

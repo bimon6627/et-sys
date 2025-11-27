@@ -61,7 +61,7 @@ const toDatetimeLocal = (dateStr: string | Date) => {
 
 const getStatus = (data: CaseWithFormReply) => {
   const status = GetCaseStatus(data);
-  let hms = data.hmsFlag ? "HMS " : "";
+  const hms = data.hmsFlag ? "HMS " : "";
   let className = "";
   let result = "";
   switch (status) {

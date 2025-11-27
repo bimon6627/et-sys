@@ -6,7 +6,7 @@ import {
   searchParticipants,
 } from "@/app/actions/hms-actions";
 import { useState, useCallback, useEffect } from "react";
-import { BiSearch, BiUserX, BiPlusCircle } from "react-icons/bi";
+import { BiSearch, BiUserX } from "react-icons/bi";
 
 // Define SearchResult type (must match Server Action output)
 type SearchResult = {
