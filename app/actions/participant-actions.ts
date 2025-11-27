@@ -11,34 +11,65 @@ export type ParticipantWithRelations = Awaited<
 // 💡 Security Check: Users must have at least read permission
 async function checkParticipantReadAuth() {
   const session = await auth();
-  const permissions = session?.user?.permissions || [];
+  if (!session?.user?.email) throw new Error("Unauthorized");
 
-  // Checking for base read permission
-  if (!permissions.includes("participant:read")) {
-    throw new Error("Unauthorized: Missing 'participant:read' permission.");
+  const user = await prisma.whitelist.findUnique({
+    where: { email: session.user.email },
+    include: {
+      role: { include: { permissions: true } },
+      region: true,
+    },
+  });
+
+  if (!user) throw new Error("User not found");
+
+  const permissions = user.role?.permissions.map((p) => p.slug) || [];
+
+  if (
+    !permissions.includes("participant:read") &&
+    !permissions.includes("participant:regional_read")
+  ) {
+    throw new Error("Unauthorized");
   }
+
+  return { ...user, permissions };
 }
 
 export async function getParticipantsGroupedByRegion() {
-  await checkParticipantReadAuth();
+  const user = await checkParticipantReadAuth();
 
   try {
-    // Fetch all participants with their Region and Organization details
+    let whereClause = {};
+
+    const hasGlobalRead = user.permissions.includes("participant:read");
+    const hasRegionalRead = user.permissions.includes(
+      "participant:regional_read"
+    );
+
+    if (!hasGlobalRead && hasRegionalRead) {
+      if (user.regionId) {
+        whereClause = { regionId: user.regionId };
+      } else {
+        return {};
+      }
+    }
+
+    // 2. Run ONE Query (Variable is now available to the rest of the function)
     const participants = await prisma.participant.findMany({
+      where: whereClause,
       include: { region: true, organization: true },
       orderBy: { organization: { name: "asc" } },
     });
 
-    // Initialize grouping structure
-    // Region -> Organization -> { delegates: [], observers: [] }
+    // 3. Grouping Logic (Unchanged)
     const grouped: Record<
       string,
       Record<
         string,
         {
           organization: any;
-          delegates: any[]; // 💡 CHANGED from single object to array
-          observers: any[]; // 💡 CHANGED from single object to array
+          delegates: any[];
+          observers: any[];
         }
       >
     > = {};
@@ -54,12 +85,11 @@ export async function getParticipantsGroupedByRegion() {
       if (!grouped[regionName][orgName]) {
         grouped[regionName][orgName] = {
           organization: p.organization,
-          delegates: [], // Initialize empty array
-          observers: [], // Initialize empty array
+          delegates: [],
+          observers: [],
         };
       }
 
-      // Push to the correct array based on type
       if (p.type === "DELEGATE") {
         grouped[regionName][orgName].delegates.push(p);
       } else {

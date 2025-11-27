@@ -14,7 +14,12 @@ export default async function ParticipantsPage() {
   const permissions = session?.user?.permissions || [];
 
   // Security Check: Require READ permission
-  if (!permissions.includes("participant:read")) {
+  if (
+    !(
+      permissions.includes("participant:read") ||
+      permissions.includes("participant:regional_read")
+    )
+  ) {
     redirect("/unauthorized");
   }
 

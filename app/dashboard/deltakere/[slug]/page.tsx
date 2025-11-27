@@ -19,10 +19,10 @@ import {
 } from "react-icons/bi";
 import GetGender from "@/components/ts/get-gender";
 import ParticipantHmsHistory from "@/components/participants/participant-hms-history";
+import ParticipantAbsenceHistory from "@/components/participants/participant-absence-history";
 import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 import { Metadata } from "next";
 import { cache } from "react";
-import ParticipantAbsenceHistory from "@/components/participants/participant-absence-history";
 
 export async function generateMetadata({
   params,
@@ -52,23 +52,46 @@ const formatDate = (date: Date | null | undefined) => {
   });
 };
 
+// --- 1. DATA FETCHING & SECURITY LOGIC ---
 async function getParticipantData(slug: string) {
   const participantId = parseInt(slug, 10);
   if (isNaN(participantId)) return null;
 
   const session = await auth();
-  const permissions = session?.user?.permissions || [];
+  if (!session?.user?.email) return "UNAUTHORIZED";
 
-  // Check generic read permission
-  if (!permissions.includes("participant:read")) {
-    return "UNAUTHORIZED"; // distinct error state
+  // 1. Fetch the CURRENT USER to get their Region ID
+  const currentUser = await prisma.whitelist.findUnique({
+    where: { email: session.user.email },
+    select: { regionId: true },
+  });
+
+  const permissions = session?.user?.permissions || [];
+  const hasGlobalRead = permissions.includes("participant:read");
+  const hasRegionalRead = permissions.includes("participant:regional_read");
+
+  // Basic Gate: Must have at least one read permission
+  if (!hasGlobalRead && !hasRegionalRead) {
+    return "UNAUTHORIZED";
   }
 
   const canViewHms = permissions.includes("hse:read");
   const canViewCases = permissions.includes("case:read");
 
-  // Re-use your existing cached db call
+  // 2. Fetch the PARTICIPANT
   const data = await getParticipant(participantId, canViewHms, canViewCases);
+
+  if (!data) return null;
+
+  // 3. REGIONAL SECURITY CHECK
+  // If user does NOT have global read, enforce region matching
+  if (!hasGlobalRead) {
+    // If user has no region, or regions don't match -> Deny access
+    if (!currentUser?.regionId || currentUser.regionId !== data.regionId) {
+      return "UNAUTHORIZED";
+    }
+  }
+
   return {
     participant: data,
     permissions: {
@@ -81,28 +104,23 @@ async function getParticipantData(slug: string) {
   };
 }
 
+// Cached fetcher for Participant Data
 const getParticipant = cache(
   async (
     id: number,
-
     canViewHms: boolean = false,
-
     canViewCases: boolean = false
   ) => {
     return await prisma.participant.findUnique({
       where: { id },
-
       include: {
         region: true,
-
         organization: true,
 
         // 💡 SECURE FETCH: HMS
-
         hms: canViewHms
           ? {
               orderBy: { createdAt: "desc" },
-
               include: {
                 reportedBy: { select: { email: true } },
               },
@@ -110,13 +128,11 @@ const getParticipant = cache(
           : false,
 
         // 💡 SECURE FETCH: Cases (Absence)
-
         cases: canViewCases
           ? {
               orderBy: { id: "desc" },
-
               include: {
-                formReply: true, // Needed for dates/reason
+                formReply: true,
                 participant: true,
               },
             }
@@ -130,9 +146,8 @@ const getParticipant = cache(
 export default async function ParticipantDetailsPage({
   params,
 }: {
-  params: Promise<{ slug: string }>; // 👈 1. Change type to Promise
+  params: Promise<{ slug: string }>;
 }) {
-  // 2. Await the params before accessing properties
   const { slug } = await params;
 
   const result = await getParticipantData(slug);
@@ -333,6 +348,7 @@ export default async function ParticipantDetailsPage({
           </div>
         </div>
 
+        {/* --- SECTION 4: ABSENCE HISTORY (PROTECTED) --- */}
         {permissions.canReadCases &&
           participant.cases &&
           participant.cases.length > 0 && (
@@ -346,7 +362,7 @@ export default async function ParticipantDetailsPage({
             </div>
           )}
 
-        {/* --- BOTTOM SECTION: HMS HISTORY (PROTECTED) --- */}
+        {/* --- SECTION 5: HMS HISTORY (PROTECTED) --- */}
         {permissions.canReadHse &&
           participant.hms &&
           participant.hms.length > 0 && (
@@ -375,13 +391,13 @@ function InfoRow({
   value,
   placeholder,
   icon: Icon,
-  href, // 👈 New Prop
+  href,
 }: {
   label: string;
   value: string | null | undefined;
   placeholder?: string;
   icon?: any;
-  href?: string; // 👈 Type definition
+  href?: string;
 }) {
   const displayValue = value || placeholder || "-";
 
@@ -391,8 +407,7 @@ function InfoRow({
         {Icon && <Icon className="size-4" />} {label}
       </span>
 
-      <span className="text-sm font-medium text-gray-900 text-right max-w-[250px] break-words">
-        {/* 💡 Logic: If we have a value AND a link, render an anchor tag */}
+      <span className="text-sm font-medium text-gray-900 text-right max-w-[200px] break-words">
         {value && href ? (
           <a
             href={href}

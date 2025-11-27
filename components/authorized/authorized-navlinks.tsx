@@ -45,6 +45,12 @@ const NAV_GROUPS: NavItem[][] = [
       icon: BiUser,
       permission: "participant:read",
     },
+    {
+      label: "Mine deltakere",
+      href: "/dashboard/deltakere",
+      icon: BiUser,
+      permission: "participant:regional_read",
+    },
   ],
   [
     // 3. The Dynamic Check: This only appears if user has 'admin:view'
