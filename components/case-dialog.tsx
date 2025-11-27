@@ -402,7 +402,7 @@ export default function CaseDialog({
                   />
                 ) : (
                   <div className="bg-blue-50 p-3 rounded border border-blue-100 text-blue-900 italic text-sm">
-                    "{form.reason}"
+                    {form.reason}
                   </div>
                 )}
               </div>
