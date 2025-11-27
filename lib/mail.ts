@@ -22,6 +22,7 @@ export async function sendEmail({
   html?: string;
   attachments?: any[];
 }) {
+  console.log("Running nodemailer...");
   try {
     const configEntry = await prisma.config.findUnique({
       where: { key: "ENABLE_MAIL" },
@@ -33,7 +34,7 @@ export async function sendEmail({
       return { success: true, skipped: true }; // Return success so the UI doesn't show an error
     }
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"Elevtinget" <${process.env.GMAIL_FROM}>`,
       to,
       subject,
@@ -41,10 +42,10 @@ export async function sendEmail({
       html: html || text, // Use text as HTML fallback if not provided
       attachments: attachments,
     });
-    //console.log("Message sent: %s", info.messageId);
+    console.log("Message sent: %s", info.messageId);
     return { success: true };
   } catch (error) {
-    //console.error("Error sending email:", error);
+    console.error("Error sending email:", error);
     return { success: false, error };
   }
 }
