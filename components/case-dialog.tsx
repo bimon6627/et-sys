@@ -116,7 +116,7 @@ export default function CaseDialog({
   const canDelete = permissions.includes("case:delete");
   const canWrite = permissions.includes("case:write");
   const canWriteHSE = permissions.includes("hse:write");
-  const canDeleteHSE = permissions.includes("hse:delete");
+  //const canDeleteHSE = permissions.includes("hse:delete");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
