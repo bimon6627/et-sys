@@ -68,3 +68,28 @@ export async function deleteWhitelistUser(userId: number) {
     return { success: false, message: "Kunne ikke slette bruker." };
   }
 }
+
+export async function updateWhitelistUser(
+  userId: number,
+  roleId: number,
+  regionId: number | null
+) {
+  await checkAuth();
+
+  try {
+    await prisma.whitelist.update({
+      where: { id: userId },
+      data: {
+        role: { connect: { id: roleId } },
+        // If regionId is provided, connect it; otherwise, disconnect (set to null)
+        region: regionId ? { connect: { id: regionId } } : { disconnect: true },
+      },
+    });
+
+    revalidatePath("/dashboard/admin/users");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return { success: false, message: "Kunne ikke oppdatere bruker." };
+  }
+}
