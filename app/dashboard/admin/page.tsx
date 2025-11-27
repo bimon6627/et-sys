@@ -1,18 +1,13 @@
-import React from "react";
-import NavbarAuthorized from "@/components/authorized-navbar";
-import AdminComponent from "@/components/admin-component"; // Import the AdminComponent
-import { Metadata } from "next";
-export const metadata: Metadata = {
-  title: "Admin",
-};
+import EventConfigForm from "@/components/admin/event-config-form"; // Corrected import path
 
-export default function Admin() {
+export default function AdminConfigPage() {
   return (
-    <div className="bg-white min-w-screen min-h-screen md:flex md:flex-row">
-      <NavbarAuthorized />
-      <main className="flex flex-col flex-grow items-center justify-center w-full h-full p-6 md:p-10">
-        <AdminComponent />
-      </main>
+    <div className="space-y-8">
+      <h1 className="text-3xl font-bold">Generell Konfigurasjon</h1>
+
+      <section className="p-6 bg-white rounded-lg shadow border">
+        <EventConfigForm />
+      </section>
     </div>
   );
 }

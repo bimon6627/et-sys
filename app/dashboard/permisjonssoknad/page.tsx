@@ -1,5 +1,5 @@
 import React from "react";
-import NavbarAuthorized from "@/components/authorized-navbar";
+import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 import FormClientSection from "@/components/form-client-section";
 import { Metadata } from "next";
 export const metadata: Metadata = {
@@ -10,8 +10,8 @@ export default async function AuthFormPage() {
   return (
     <div className="min-w-screen min-h-screen md:flex flex-row">
       <NavbarAuthorized />
-      <main className="flex flex-row flex-grow items-center justify-center w-full h-full p-6 md:p-10">
-        <div className="flex flex-grow justify-center mt-10 mb-10 w-full h-full overflow-y-hidden">
+      <main className="flex flex-row flex-grow items-center justify-center w-full h-full p-5 md:p-10">
+        <div className="flex flex-grow justify-center mb-10 w-full h-full overflow-y-hidden">
           <div className="w-full max-w-2xl mx-auto space-y-3 top-20 px-4">
             <div>
               <div className="rounded-t-lg bg-eo-blue pt-3"></div>

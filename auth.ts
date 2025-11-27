@@ -1,8 +1,24 @@
-// auth.ts
-import NextAuth from "next-auth";
+import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
 import { prisma } from "./lib/prisma";
+
+// 1. Extend TypeScript types to recognize your new fields
+declare module "next-auth" {
+  interface Session {
+    user: {
+      role?: string;
+      permissions: string[]; // Add this array of slugs
+    } & DefaultSession["user"];
+  }
+}
+
+declare module "@auth/core/jwt" {
+  interface JWT {
+    role?: string;
+    permissions: string[];
+  }
+}
 
 const config = {
   providers: [
@@ -13,67 +29,84 @@ const config = {
   ],
   pages: {
     signIn: "/",
+    error: "/unauthorized", // Good practice to redirect here on auth failures
   },
   callbacks: {
     async jwt({ token, user }) {
-      // User and account are only present on the initial sign in
+      // User is only present on initial sign-in
       if (user) {
-        // Fetch user role from your database
+        // 2. Fetch User + Role + Permissions
         const userRecord = await prisma.whitelist.findUnique({
           where: { email: user.email as string },
+          include: {
+            role: {
+              include: {
+                permissions: true, // Load the permissions!
+              },
+            },
+          },
         });
 
         if (userRecord) {
-          token.role = userRecord.role; // Add role to the JWT
-          token.email = userRecord.email; // Add email to the JWT
+          // 3. Store simplified data in the Token
+          // We don't want the whole object, just the name and slugs
+          token.role = userRecord.role?.name;
+          token.permissions =
+            userRecord.role?.permissions.map((p) => p.slug) ?? [];
+          token.email = userRecord.email;
         }
-
-        // IMPORTANT: Do NOT store account.access_token here unless you have a strong reason
-        // and understand its implications (lifetime, refresh strategy).
-        // It's a Google token, not your app's session token.
-        // Your app's session token is the JWT itself.
       }
-      return token; // The `token` object itself is your NextAuth.js JWT payload
+      return token;
     },
 
     async session({ session, token }) {
-      if (token) {
-        session.user.role = token.role as string;
-        session.user.email = token.email as string;
-        // The session object passed to the client is now enriched with role and email.
-        // You generally don't need a `session.accessToken` if you're using `auth()` helper
-        // or just checking `session.user` existence.
+      if (token && session.user) {
+        // 4. Pass data from Token to Session (Client Side Access)
+        session.user.role = token.role || "";
+        session.user.permissions = token.permissions || [];
+        session.user.email = token.email || "";
       }
       return session;
     },
 
     async signIn({ profile }) {
-      const unauthorized = "/unauthorized";
-      if (!profile) return unauthorized;
+      if (!profile?.email) return "/unauthorized";
 
       const user = await prisma.whitelist.findUnique({
-        where: { email: profile.email as string },
+        where: { email: profile.email },
       });
 
-      return !!user || unauthorized;
+      // If user is not in whitelist, block sign in
+      return !!user;
     },
 
     authorized({ request, auth }) {
       const { pathname } = request.nextUrl;
-      // Example authorization logic:
+      const isLoggedIn = !!auth?.user;
+      const userRole = auth?.user?.role;
+      const userPermissions = auth?.user?.permissions || [];
+
+      // 5. Example: Admin Route Protection
       if (pathname.startsWith("/admin")) {
-        // For admin pages, user must be authenticated AND have 'admin' role
-        return !!auth && auth.user.role === "admin"; // Assumes 'admin' is the role name
+        // Check if they are logged in AND have the 'ADMIN' role name
+        return isLoggedIn && userRole === "ADMIN";
       }
-      if (pathname.includes("/dashboard")) return !!auth; // Simply authenticated
-      return true; // Allow access to all other paths
+
+      // 6. Example: Granular Permission Check
+      // If you have a route that requires 'case:read' permission
+      if (pathname.startsWith("/cases")) {
+        return isLoggedIn && userPermissions.includes("case:read");
+      }
+
+      // Dashboard just requires login
+      if (pathname.includes("/dashboard")) return isLoggedIn;
+
+      return true;
     },
   },
   session: {
-    strategy: "jwt", // Explicitly use JWT strategy for session management
+    strategy: "jwt",
   },
-  // Optionally, you can add a secret for JWT signing in production
-  // secret: process.env.NEXTAUTH_SECRET,
 } satisfies NextAuthConfig;
 
 export const { handlers, auth, signIn, signOut } = NextAuth(config);

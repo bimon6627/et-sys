@@ -2,7 +2,7 @@
 
 import { BiMenu, BiX } from "react-icons/bi";
 import { useState } from "react";
-import SignOut from "./sign-out";
+import SignOut from "../sign-out";
 
 interface NavbarAuthorizedHamburgerProps {
   navlinks: React.ReactNode; // This is the "slot" for your Server Component content

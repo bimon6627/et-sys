@@ -19,6 +19,7 @@ interface FormReply {
 }
 
 interface CaseWithFormReply {
+  participant: any;
   id?: number;
   formReplyId?: number;
   id_swapped?: boolean | null;
@@ -30,7 +31,6 @@ interface CaseWithFormReply {
   reviewedAt?: Date | null;
   formReply?: FormReply | null; // Make formReply optional AND nullable
   hmsFlag: Boolean;
-  // Add other properties of Case as needed
 }
 
 export type { CaseWithFormReply, FormReply };

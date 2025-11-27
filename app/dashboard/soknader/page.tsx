@@ -1,10 +1,10 @@
 import React from "react";
-import GetUserInfo from "@/components/js/get-user-info";
-import NavbarAuthorized from "@/components/authorized-navbar";
+import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 
 import { PrismaClient } from "@prisma/client";
 import { Metadata } from "next";
 import CaseTable from "@/components/case-table";
+import { Protect } from "@/components/protect";
 
 const prisma = new PrismaClient();
 
@@ -29,14 +29,18 @@ export const metadata: Metadata = {
 };
 
 export default async function Soknader() {
-  const user = await GetUserInfo();
+  // REMOVED: const user = await GetUserInfo();
   const cases = await getAllCases();
+
   return (
-    <div className="bg-white max-w-screen min-h-screen md:flex flex-row">
-      <NavbarAuthorized />
-      <main className="mx-auto w-full md:mx-5">
-        <CaseTable user={user} initialCases={cases} />
-      </main>
-    </div>
+    <Protect permission="case:read">
+      <div className="bg-white max-w-screen min-h-screen md:flex flex-row">
+        <NavbarAuthorized />
+        <main className="mx-auto w-full md:mx-5">
+          {/* REMOVED: user={user} */}
+          <CaseTable initialCases={cases} />
+        </main>
+      </div>
+    </Protect>
   );
 }

@@ -74,6 +74,18 @@ export default function getStatusSymbol(data: CaseWithFormReply) {
           className={"text-red-600 " + classNameString}
         />
       );
+    case "SWAP":
+      return hms ? (
+        <BiPlusMedical
+          title="Bytt skiltnummer"
+          className={"text-blue-600 " + classNameString}
+        />
+      ) : (
+        <BiSolidErrorCircle
+          title="Bytt skiltnummer"
+          className={"text-blue-600 " + classNameString}
+        />
+      );
     case "ERROR":
       return (
         <BiSolidErrorCircle

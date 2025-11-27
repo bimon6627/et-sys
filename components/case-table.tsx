@@ -1,599 +1,304 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from "react"; // Import useEffect
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   BiCheckbox,
-  BiError,
   BiSolidCheckboxChecked,
   BiSolidDownArrow,
   BiSolidSortAlt,
   BiSolidUpArrow,
 } from "react-icons/bi";
-import { CaseWithFormReply, FormReply } from "@/types/case";
+// Import server action
+import { getFilteredCases } from "@/app/actions/case-actions";
 import CaseDialog from "./case-dialog";
 import getStatusSymbol from "./status-symbol";
-import { useSession } from "next-auth/react";
+import { getEventConfig } from "@/app/actions/config-actions";
+import GetParticipantReturning from "./ts/get-participant-returning";
 
-interface User {
-  name?: string | undefined;
-  image?: string | undefined;
-  given_name?: string | undefined;
-  family_name?: string | undefined;
-  email?: string | undefined;
-  role?: string | undefined;
+// Helper: Prioritize Linked Participant Data
+const getDisplayName = (c: any) =>
+  c.participant?.name || c.formReply?.name || "Ukjent";
+const getDisplayId = (c: any) =>
+  c.participant?.participant_id || c.formReply?.participant_id || "-";
+const getDisplayEmail = (c: any) =>
+  c.participant?.email || c.formReply?.email || "-";
+
+// Date Helper
+function getDateString(inDate: Date | string) {
+  if (!inDate) return "";
+  const d = new Date(inDate);
+  const offset = d.getDay();
+  const days = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+  const day = days[(offset + 6) % 7];
+  const hours = String(d.getHours()).padStart(2, "0");
+  const mins = String(d.getMinutes()).padStart(2, "0");
+  return `${day} ${hours}:${mins}`;
 }
 
-interface CaseTableProps {
-  user: User;
-  initialCases: CaseWithFormReply[];
-}
-
-function getDateString(inDate: Date) {
-  const offset = inDate.getDay();
-  const days = ["Man", "Tir", "Ons", "Tor", "Fre", "Kommer ikke tilbake"];
-  const day = days[offset - 1];
-  if (offset > 5 || offset < 1) return "Kommer ikke tilbake";
-
-  const hours = inDate.getHours();
-  const mins = inDate.getMinutes();
-  const formattedHours = String(hours).padStart(2, "0");
-  const formattedMinutes = String(mins).padStart(2, "0");
-
-  return `${day} ${formattedHours}:${formattedMinutes}`;
-}
-
-export default function CaseTable({ user, initialCases }: CaseTableProps) {
-  const { data: session } = useSession();
-  const [cases, setCases] = useState(initialCases); // Use state for cases
+export default function CaseTable({ initialCases }: { initialCases: any[] }) {
+  const [cases, setCases] = useState(initialCases);
   const [activeButton, setActiveButton] = useState("ALL");
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [eventConfig, setEventConfig] = useState<{
+    startDate: string;
+    endDate: string;
+  } | null>(null);
+
+  // Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogData, setDialogData] = useState<CaseWithFormReply | null>(
-    initialCases.length > 0 ? initialCases[0] : null
-  );
-  const [sortColumn, setSortColumn] = useState<keyof FormReply | null>(null); // Column to sort by
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc"); // Sort direction
+  const [selectedCase, setSelectedCase] = useState<any | null>(null);
 
-  const titleRef = useRef<HTMLDivElement>(null); // Assuming your buttons are in a div
-  const headerRef = useRef<HTMLTableSectionElement>(null);
-  const scrollableBodyRef = useRef<HTMLDivElement>(null);
-  const activeButtonRef = useRef(activeButton);
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
-    activeButtonRef.current = activeButton;
-    fetchNewCases();
-  }, [activeButton]);
-
-  const openDialog = (caseData: CaseWithFormReply) => {
-    setDialogData(caseData);
-    setIsDialogOpen(true);
-  };
-
-  const closeDialog = () => {
-    setIsDialogOpen(false);
-  };
-
-  useEffect(() => {
-    if (user !== undefined) {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const fetchNewCases = async () => {
-    const condition = activeButtonRef.current;
-    const url = `/api/cases?status=${condition}`;
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (data.success && Array.isArray(data.value)) {
-        // Convert date strings to Date objects
-        const processedCases = data.value.map(
-          (caseItem: CaseWithFormReply) => ({
-            ...caseItem,
-            formReply: caseItem.formReply
-              ? {
-                  ...caseItem.formReply,
-                  from: caseItem.formReply.from
-                    ? new Date(caseItem.formReply.from)
-                    : null,
-                  to: caseItem.formReply.to
-                    ? new Date(caseItem.formReply.to)
-                    : null,
-                }
-              : null,
-          })
-        );
-        setCases(processedCases);
-      } else {
-        console.error("Failed to fetch cases correctly:", data);
-        setError("Failed to fetch cases.");
-      }
-    } catch (error: unknown) {
-      // Change 'any' to 'unknown'
-      console.error("Failed to fetch new cases:", error);
-
-      // Safely check if error is an instance of Error before accessing .message
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        // Handle cases where the error might not be an Error object (e.g., a string or an object)
-        setError("An unknown error occurred.");
-        // Or if you want to be more specific:
-        // setError(String(error)); // Convert whatever 'error' is to a string
-      }
-    }
-  };
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      fetchNewCases();
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [session]);
-
-  useEffect(() => {
-    const calculateMaxHeight = () => {
-      if (titleRef.current && headerRef.current && scrollableBodyRef.current) {
-        const titleHeight = titleRef.current.offsetHeight;
-        const headerHeight = headerRef.current.offsetHeight;
-        const availableHeight =
-          window.innerHeight - titleHeight - headerHeight - 20; // Adjust 20px for spacing
-        scrollableBodyRef.current.style.maxHeight = `${availableHeight}px`;
+    const fetchConfig = async () => {
+      try {
+        const config = await getEventConfig();
+        setEventConfig(config);
+      } catch (err) {
+        console.error("Failed to load event config", err);
       }
     };
 
-    calculateMaxHeight(); // Initial calculation
-
-    const handleResize = () => {
-      calculateMaxHeight(); // Recalculate on resize
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize); // Cleanup on unmount
-    };
+    fetchConfig();
   }, []);
 
-  const handleButtonClick = (buttonName: string) => {
-    setActiveButton(buttonName);
-  };
+  // --- FETCHING LOGIC (Using Server Action) ---
+  const fetchCases = useCallback(async () => {
+    try {
+      // Call Server Action directly
+      const data = await getFilteredCases(activeButton);
+      setCases(data);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Kunne ikke laste søknader.");
+    }
+  }, [activeButton]);
 
-  const handleSortClick = (column: keyof FormReply) => {
-    if (sortColumn === column) {
-      // If clicking the same column, toggle direction
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+  // Polling Effect
+  useEffect(() => {
+    fetchCases(); // Fetch immediately on filter change
+    const interval = setInterval(fetchCases, 10000); // Poll every 10s
+    return () => clearInterval(interval);
+  }, [fetchCases]);
+
+  // --- SORTING LOGIC (Client Side) ---
+  const sortedCases = useMemo(() => {
+    if (!sortColumn) return cases;
+
+    return [...cases].sort((a, b) => {
+      // Resolve values (handle nested formReply or linked participant)
+      let valA = a.formReply?.[sortColumn];
+      let valB = b.formReply?.[sortColumn];
+
+      // Handle special override columns
+      if (sortColumn === "name") {
+        valA = getDisplayName(a);
+        valB = getDisplayName(b);
+      }
+      if (sortColumn === "participant_id") {
+        valA = getDisplayId(a);
+        valB = getDisplayId(b);
+      }
+
+      if (!valA) return 1;
+      if (!valB) return -1;
+
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [cases, sortColumn, sortDirection]);
+
+  const handleSort = (col: string) => {
+    if (sortColumn === col) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
-      // If clicking a new column, set it as the sort column and default to ascending
-      setSortColumn(column);
+      setSortColumn(col);
       setSortDirection("asc");
     }
   };
 
-  const isEmptySortValue = (
-    value: string | number | boolean | Date | null | undefined
-  ): boolean => {
-    return (
-      value === null ||
-      value === undefined ||
-      (typeof value === "string" && value.trim() === "")
+  const renderSortIcon = (col: string) => {
+    if (sortColumn !== col) return <BiSolidSortAlt className="ml-1 inline" />;
+    return sortDirection === "asc" ? (
+      <BiSolidDownArrow className="ml-1 inline" />
+    ) : (
+      <BiSolidUpArrow className="ml-1 inline" />
     );
   };
 
-  const sortedCases = useMemo(() => {
-    if (!sortColumn) {
-      return cases; // No sorting applied
-    }
-
-    const sortableCases = [...cases]; // Create a shallow copy
-
-    sortableCases.sort((a, b) => {
-      const aFormReply = a.formReply;
-      const bFormReply = b.formReply;
-
-      // First, handle cases where formReply itself might be null or undefined
-      // This ensures cases without a formReply are consistently positioned.
-      // Let's decide to always push them to the end, regardless of direction.
-      if (!aFormReply && !bFormReply) return 0;
-      if (!aFormReply) return 1; // 'a' is missing formReply, push to end
-      if (!bFormReply) return -1; // 'b' is missing formReply, push to end
-
-      // Now we are sure aFormReply and bFormReply exist.
-      // Get the values for the current sortColumn.
-      // Use non-null assertion `!` because we check `sortColumn` at the top and `formReply` just above.
-      const aValue = aFormReply[sortColumn!];
-      const bValue = bFormReply[sortColumn!];
-
-      const aIsEmpty = isEmptySortValue(aValue);
-      const bIsEmpty = isEmptySortValue(bValue);
-
-      // --- CRITICAL CHANGE FOR EMPTY VALUES ---
-      // If both are empty, consider them equal in terms of sort order.
-      if (aIsEmpty && bIsEmpty) return 0;
-      // If only 'a' is empty, 'a' comes after 'b' (push empty to end).
-      if (aIsEmpty) return 1;
-      // If only 'b' is empty, 'b' comes after 'a' (push empty to end).
-      if (bIsEmpty) return -1;
-      // --- END CRITICAL CHANGE ---
-
-      // At this point, both aValue and bValue are guaranteed to be non-empty.
-      // Proceed with type-specific comparison.
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      } else if (aValue instanceof Date && bValue instanceof Date) {
-        const aTime = aValue.getTime();
-        const bTime = bValue.getTime();
-        return sortDirection === "asc" ? aTime - bTime : bTime - aTime;
-      } else if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-      } else if (typeof aValue === "boolean" && typeof bValue === "boolean") {
-        const aBool = aValue ? 1 : 0;
-        const bBool = bValue ? 1 : 0;
-        return sortDirection === "asc" ? aBool - bBool : bBool - aBool;
-      }
-      // Fallback: If types are unknown or mixed, treat as equal.
-      // You might want to handle this case more specifically if other types are possible.
-      return 0;
-    });
-
-    return sortableCases;
-  }, [cases, sortColumn, sortDirection]);
-
-  const renderSortIcon = (column: keyof FormReply) => {
-    if (sortColumn !== column) {
-      return <BiSolidSortAlt className="ml-1" />;
-    }
-    if (sortDirection === "desc") {
-      return <BiSolidUpArrow className="ml-1" />;
-    }
-    return <BiSolidDownArrow className="ml-1" />;
-  };
-
-  if (loading) {
+  if (error)
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <h1 className="w-full my-auto text-7xl text-center font-bold">
-          Laster inn...
-        </h1>
+      <div className="p-10 text-center text-red-600 font-bold text-xl">
+        {error}
       </div>
     );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col max-h-screen min-h-0 max-w-full">
-        <div>
-          <h1 className="text-3xl md:text-5xl font-bold text-center">
-            Permisjonssøknader
-          </h1>
-          <div className="flex flex-row justify-center gap-3 md:my-5">
-            <button
-              className={` ${
-                activeButton === "ALL" ? "underline " : "hover:opacity-50"
-              }`}
-              onClick={() => handleButtonClick("ALL")}
-            >
-              Alle
-            </button>
-            <button
-              className={` ${
-                activeButton === "REQUIRE_ACTION"
-                  ? "underline"
-                  : "hover:opacity-50"
-              }`}
-              onClick={() => handleButtonClick("REQUIRE_ACTION")}
-            >
-              Krever handling
-            </button>
-            <button
-              className={` ${
-                activeButton === "PENDING" ? "underline " : "hover:opacity-50"
-              }`}
-              onClick={() => handleButtonClick("PENDING")}
-            >
-              Ikke behandlet
-            </button>
-            <button
-              className={` ${
-                activeButton === "APPROVED" ? "underline " : "hover:opacity-50"
-              }`}
-              onClick={() => handleButtonClick("APPROVED")}
-            >
-              Godkjent
-            </button>
-            <button
-              className={` ${
-                activeButton === "REJECTED" ? "underline " : "hover:opacity-50"
-              }`}
-              onClick={() => handleButtonClick("REJECTED")}
-            >
-              Avvist
-            </button>
-            <button
-              className={` ${
-                activeButton === "EXPIRED" ? "underline " : "hover:opacity-50"
-              }`}
-              onClick={() => handleButtonClick("EXPIRED")}
-            >
-              Utgått
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-row items-center rounded-3xl bg-yellow-400">
-          <BiError className="size-[500px]" />
-          <p className="text-5xl font-bold">
-            Feil ved lasting av søknader: {error}
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col max-h-screen min-h-0 max-w-full">
-      <div>
-        <h1 className="text-3xl mt-5 md:text-5xl font-bold text-center">
-          Permisjonssøknader
-        </h1>
-        <div className="flex flex-row justify-center gap-3 md:my-5">
+    <div className="flex flex-col w-full">
+      <h1 className="text-3xl mt-5 md:text-5xl font-bold text-center mb-6">
+        Permisjonssøknader
+      </h1>
+
+      {/* Filter Buttons */}
+      <div className="flex flex-wrap justify-center gap-3 mb-6">
+        {[
+          "ALL",
+          "REQUIRE_ACTION",
+          "PENDING",
+          "APPROVED",
+          "REJECTED",
+          "EXPIRED",
+        ].map((filter) => (
           <button
-            className={` ${
-              activeButton === "ALL" ? "underline " : "hover:opacity-50"
+            key={filter}
+            onClick={() => setActiveButton(filter)}
+            className={`px-4 py-2 rounded transition-colors ${
+              activeButton === filter
+                ? "bg-blue-600 text-white font-bold"
+                : "bg-gray-100 hover:bg-gray-200 text-gray-700"
             }`}
-            onClick={() => handleButtonClick("ALL")}
           >
-            Alle
+            {filter === "ALL"
+              ? "Alle"
+              : filter === "REQUIRE_ACTION"
+              ? "Krever handling"
+              : filter === "PENDING"
+              ? "Ikke behandlet"
+              : filter === "APPROVED"
+              ? "Godkjent"
+              : filter === "REJECTED"
+              ? "Avvist"
+              : "Utgått"}
           </button>
-          <button
-            className={` ${
-              activeButton === "REQUIRE_ACTION"
-                ? "underline"
-                : "hover:opacity-50"
-            }`}
-            onClick={() => handleButtonClick("REQUIRE_ACTION")}
-          >
-            Krever handling
-          </button>
-          <button
-            className={` ${
-              activeButton === "PENDING" ? "underline " : "hover:opacity-50"
-            }`}
-            onClick={() => handleButtonClick("PENDING")}
-          >
-            Ikke behandlet
-          </button>
-          <button
-            className={` ${
-              activeButton === "APPROVED" ? "underline " : "hover:opacity-50"
-            }`}
-            onClick={() => handleButtonClick("APPROVED")}
-          >
-            Godkjent
-          </button>
-          <button
-            className={` ${
-              activeButton === "REJECTED" ? "underline " : "hover:opacity-50"
-            }`}
-            onClick={() => handleButtonClick("REJECTED")}
-          >
-            Avvist
-          </button>
-          <button
-            className={` ${
-              activeButton === "EXPIRED" ? "underline " : "hover:opacity-50"
-            }`}
-            onClick={() => handleButtonClick("EXPIRED")}
-          >
-            Utgått
-          </button>
-        </div>
+        ))}
       </div>
 
-      {dialogData !== null ? (
-        <CaseDialog
-          open={isDialogOpen}
-          data={dialogData}
-          user={user}
-          onClose={closeDialog}
-        />
-      ) : (
-        <></>
-      )}
-      <div className="md:mb-10 border-collapse border outline-gray-400 text-center rounded-t-lg shadow-md max-h-8/10 overflow-y-auto overflow-x-auto max-w-8/10">
-        <table className="table-auto w-full text-sm border-collapse">
-          <thead>
-            <tr className="bg-eo-lblue sticky top-0">
-              <th></th>
-              <th className="rounded-tl-s">
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>ID</p>
-                  <a onClick={() => handleSortClick("id")}>
-                    {renderSortIcon("id")}
-                  </a>
-                </div>
+      {/* Table */}
+      <div className="bg-white shadow rounded-lg overflow-x-auto border">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-eo-lblue sticky top-0">
+            <tr>
+              <th className="px-3 py-3 text-center">Status</th>
+              <th
+                className="px-3 py-3 cursor-pointer"
+                onClick={() => handleSort("id")}
+              >
+                ID {renderSortIcon("id")}
               </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Navn</p>
-                  <a onClick={() => handleSortClick("name")}>
-                    {renderSortIcon("name")}
-                  </a>
-                </div>
+              <th
+                className="px-3 py-3 cursor-pointer"
+                onClick={() => handleSort("name")}
+              >
+                Navn {renderSortIcon("name")}
               </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Skiltnr.</p>
-                  <a onClick={() => handleSortClick("participant_id")}>
-                    {renderSortIcon("participant_id")}
-                  </a>
-                </div>
+              <th
+                className="px-3 py-3 cursor-pointer"
+                onClick={() => handleSort("participant_id")}
+              >
+                Skilt {renderSortIcon("participant_id")}
               </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>E-post.</p>
-                  <a onClick={() => handleSortClick("email")}>
-                    {renderSortIcon("email")}
-                  </a>
-                </div>
+              <th
+                className="px-3 py-3 cursor-pointer"
+                onClick={() => handleSort("email")}
+              >
+                E-post {renderSortIcon("email")}
               </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Deltakertype</p>
-                  <a onClick={() => handleSortClick("type")}>
-                    {renderSortIcon("type")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Tlf</p>
-                  <a onClick={() => handleSortClick("tel")}>
-                    {renderSortIcon("tel")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Fylke</p>
-                  <a onClick={() => handleSortClick("county")}>
-                    {renderSortIcon("county")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Fra</p>
-                  <a onClick={() => handleSortClick("from")}>
-                    {renderSortIcon("from")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Til</p>
-                  <a onClick={() => handleSortClick("to")}>
-                    {renderSortIcon("to")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Årsak</p>
-                  <a onClick={() => handleSortClick("reason")}>
-                    {renderSortIcon("reason")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Har observatør</p>
-                  <a onClick={() => handleSortClick("has_observer")}>
-                    {renderSortIcon("has_observer")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Observatør navn</p>
-                  <a onClick={() => handleSortClick("observer_name")}>
-                    {renderSortIcon("observer_name")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Observatør skiltnr.</p>
-                  <a onClick={() => handleSortClick("observer_id")}>
-                    {renderSortIcon("observer_id")}
-                  </a>
-                </div>
-              </th>
-              <th>
-                <div className="flex flex-row items-center justify-center py-1">
-                  <p>Observatør tlf</p>
-                  <a onClick={() => handleSortClick("observer_tel")}>
-                    {renderSortIcon("observer_tel")}
-                  </a>
-                </div>
-              </th>
+              <th className="px-3 py-3">Type</th>
+              <th className="px-3 py-3">Fylke</th>
+              <th className="px-3 py-3">Fra</th>
+              <th className="px-3 py-3">Til</th>
+              <th className="px-3 py-3">Årsak</th>
+              <th className="px-3 py-3 text-center">Obs?</th>
             </tr>
           </thead>
-          <tbody>
-            {sortedCases &&
-              sortedCases
-                .filter((caseItem: CaseWithFormReply) => caseItem.formReply)
-                .map((caseItem: CaseWithFormReply) => (
-                  <tr
-                    key={caseItem.id}
-                    className="border-b transition-colors cursor-pointer odd:bg-gray-100 hover:odd:bg-white hover:text-gray-500 even:bg-[#CEDAE2] hover:even:bg-[#E7ECF0]"
-                    onClick={() => openDialog(caseItem)}
+          <tbody className="divide-y divide-gray-200">
+            {sortedCases.map((c) => (
+              <tr
+                key={c.id}
+                onClick={() => {
+                  setSelectedCase(c);
+                  setIsDialogOpen(true);
+                }}
+                className="hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                <td className="px-3 py-3 flex items-center justify-center">
+                  {getStatusSymbol(c)}
+                </td>
+                <td className="px-3 py-3">{c.id}</td>
+
+                {/* 💡 Use Linked Data if available */}
+                <td className="px-3 py-3 font-medium">{getDisplayName(c)}</td>
+                <td className="px-3 py-3">{getDisplayId(c)}</td>
+                <td className="px-3 py-3 truncate max-w-[150px]">
+                  {getDisplayEmail(c)}
+                </td>
+
+                <td className="px-3 py-3 text-center">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-center text-xs font-semibold ${
+                      c.formReply?.type === "DELEGATE"
+                        ? "bg-indigo-100 text-indigo-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
                   >
-                    <td className="px-3 py-2 border-r-2">
-                      {getStatusSymbol(caseItem)}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">{caseItem.id}</td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.name}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.participant_id}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.email}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.type === "DELEGATE"
-                        ? "Delegat"
-                        : "Observatør"}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.tel}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.county}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {getDateString(caseItem.formReply?.from || new Date())}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {getDateString(caseItem.formReply?.to || new Date())}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.reason}
-                    </td>
-                    <td className="px-3 py-2">
-                      {caseItem.formReply?.has_observer ? (
-                        <BiSolidCheckboxChecked className="m-auto size-6" />
-                      ) : (
-                        <BiCheckbox className="m-auto size-6" />
-                      )}
-                    </td>
-                    <td className="px-3 py-2 border-x-2">
-                      {caseItem.formReply?.observer_name}
-                    </td>
-                    <td className="px-3 py-2 border-r-2">
-                      {caseItem.formReply?.observer_id}
-                    </td>
-                    <td className="px-3 py-2">
-                      {caseItem.formReply?.observer_tel}
-                    </td>
-                  </tr>
-                ))}
-            {!cases && <p>Failed to load cases.</p>}
+                    {c.formReply?.type === "DELEGATE" ? "D" : "O"}
+                  </span>
+                </td>
+                <td className="px-3 py-3">{c.formReply?.county}</td>
+                <td className="px-3 py-3">
+                  {getDateString(c.formReply?.from)}
+                </td>
+                <td className="px-3 py-3">
+                  {GetParticipantReturning(
+                    c.formReply?.to,
+                    eventConfig?.endDate || ""
+                  )
+                    ? getDateString(c.formReply?.to)
+                    : "Kommer ikke tilbake"}
+                </td>
+                <td
+                  className="px-3 py-3 truncate max-w-[150px]"
+                  title={c.formReply?.reason}
+                >
+                  {c.formReply?.reason}
+                </td>
+                <td className="px-3 py-3 text-center">
+                  {c.formReply?.has_observer ? (
+                    <BiSolidCheckboxChecked className="size-5 mx-auto text-blue-600" />
+                  ) : (
+                    <BiCheckbox className="size-5 mx-auto text-gray-300" />
+                  )}
+                </td>
+              </tr>
+            ))}
+            {sortedCases.length === 0 && (
+              <tr>
+                <td colSpan={11} className="p-10 text-center text-gray-500">
+                  Ingen søknader funnet.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Dialog */}
+      {selectedCase && (
+        <CaseDialog
+          open={isDialogOpen}
+          data={selectedCase}
+          onCloseAction={() => {
+            setIsDialogOpen(false);
+            setSelectedCase(null);
+            fetchCases();
+          }} // Refresh on close
+        />
+      )}
     </div>
   );
 }
