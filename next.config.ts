@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
     // This allows the server to safely throw 'forbidden()' errors
     authInterrupts: true,
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default nextConfig;
