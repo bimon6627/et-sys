@@ -191,6 +191,8 @@ export async function reviewCase(
         (updatedCase.formReply.has_observer
           ? `<p>Husk å bytte skilt med observatøren din når du skal dra.</p>`
           : "") +
+          '<p style="font-size: 13px; font-style: italic; color: #666;">Denne e-posten kan ikke besvares.</p>' 
+          +
         signature;
     } else if (status === false) {
       subject = "Permisjonssøknad Avvist";
@@ -204,6 +206,7 @@ export async function reviewCase(
             <p><strong>Årsak:</strong></p>
             <p style="padding-left: 20px;">${reason_rejected}</p>
             <p>Dersom du mener dette er feil, vennligst ta kontakt med oss i infokiosk.</p>
+            <p style="font-size: 13px; font-style: italic; color: #666;">Denne e-posten kan ikke besvares.</p>
             ${signature}
         `;
     }

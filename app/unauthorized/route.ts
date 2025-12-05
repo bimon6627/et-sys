@@ -1,10 +1,10 @@
 // app/unauthorized/route.ts
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-export function GET(request: NextRequest) {
+export function GET() {
+  const baseUrl = process.env.NEXTAUTH_URL;
   const response = NextResponse.redirect(
-    new URL("/unauthorized/view", request.url)
+    new URL("/unauthorized/view", baseUrl)
   );
 
   // Delete the pkce.code_verifier cookie

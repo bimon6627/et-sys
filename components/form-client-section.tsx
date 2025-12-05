@@ -584,7 +584,9 @@ export default function FormClientSection() {
             className="ml-2 text-gray-600 text-sm cursor-pointer select-none"
           >
             Jeg samtykker til at Elevorganisasjonen behandler disse
-            opplysningene.
+            opplysningene. <a href="/personvern" target="_blank" className="text-blue-600 underline ml-1">
+    Les personvernerklæringen her.
+  </a>
           </label>
         </div>
 
