@@ -1,10 +1,10 @@
-import React from "react";
 import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 
 import { PrismaClient } from "@prisma/client";
 import { Metadata } from "next";
 import CaseTable from "@/components/case-table";
 import { Protect } from "@/components/protect";
+import { requireAuth } from "@/lib/auth-guard";
 
 const prisma = new PrismaClient();
 
@@ -31,6 +31,7 @@ export const metadata: Metadata = {
 export default async function Soknader() {
   // REMOVED: const user = await GetUserInfo();
   const cases = await getAllCases();
+  await requireAuth();
 
   return (
     <Protect permission="case:read">

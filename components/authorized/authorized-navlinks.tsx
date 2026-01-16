@@ -7,6 +7,7 @@ import {
   BiUser,
   BiShield,
   BiInfoCircle,
+  BiSolidFilePdf 
 } from "react-icons/bi";
 
 // 1. Define the structure of a navigation item
@@ -50,6 +51,11 @@ const NAV_GROUPS: NavItem[][] = [
       href: "/dashboard/deltakere",
       icon: BiUser,
       permission: "participant:regional_read",
+    },
+    {
+      label: "Forslagsblekke",
+      href: "/dashboard/forslagsblekke",
+      icon: BiSolidFilePdf,
     },
   ],
   [

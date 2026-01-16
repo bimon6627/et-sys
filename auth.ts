@@ -1,14 +1,13 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
-import { NextAuthConfig } from "next-auth";
 import { prisma } from "./lib/prisma";
+import { authConfig } from "./auth.config";
 
-// 1. Extend TypeScript types to recognize your new fields
 declare module "next-auth" {
   interface Session {
     user: {
       role?: string;
-      permissions: string[]; // Add this array of slugs
+      permissions: string[];
     } & DefaultSession["user"];
   }
 }
@@ -17,96 +16,65 @@ declare module "@auth/core/jwt" {
   interface JWT {
     role?: string;
     permissions: string[];
+    error?: string;
   }
 }
 
-const config = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Google({
-      clientId: process.env.GOOGLE_ID as string,
-      clientSecret: process.env.GOOGLE_SECRET as string,
+      clientId: process.env.GOOGLE_ID,
+      clientSecret: process.env.GOOGLE_SECRET,
     }),
   ],
-  pages: {
-    signIn: "/",
-    error: "/unauthorized", // Good practice to redirect here on auth failures
-  },
+  session: { strategy: "jwt" },
   callbacks: {
-    async jwt({ token, user }) {
-      // User is only present on initial sign-in
-      if (user) {
-        // 2. Fetch User + Role + Permissions
-        const userRecord = await prisma.whitelist.findUnique({
-          where: { email: user.email as string },
-          include: {
-            role: {
-              include: {
-                permissions: true, // Load the permissions!
-              },
-            },
-          },
-        });
+    async signIn({ profile }) {
+      if (!profile?.email) return false;
+      const user = await prisma.whitelist.findUnique({
+        where: { email: profile.email.toLowerCase() },
+      });
+      return !!user;
+    },
 
-        if (userRecord) {
-          // 3. Store simplified data in the Token
-          // We don't want the whole object, just the name and slugs
-          token.role = userRecord.role?.name;
-          token.permissions =
-            userRecord.role?.permissions.map((p) => p.slug) ?? [];
-          token.email = userRecord.email;
+    async jwt({ token, user }) {
+      const email = (user?.email || token.email || "").toLowerCase();
+      if (!email) return token;
+
+      try {
+        const userRecord = await prisma.whitelist.findUnique({
+          where: { email },
+          include: { role: { include: { permissions: true } } },
+        });
+        
+        console.log("User Record Found:", !!userRecord);
+
+        if (!userRecord) {
+          token.permissions = ["FORCE_SIGNOUT"]; 
+           token.role = "GUEST";
+           return token;
         }
+
+        token.role = userRecord.role?.name;
+        token.permissions = userRecord.role?.permissions.map((p) => p.slug) ?? [];
+        token.email = userRecord.email;
+        delete token.error; // Clear error if they are back in whitelist
+
+      } catch (error) {
+        return { ...token, error: "DatabaseError" };
       }
+      
       return token;
     },
 
     async session({ session, token }) {
-      if (token && session.user) {
-        // 4. Pass data from Token to Session (Client Side Access)
-        session.user.role = token.role || "";
-        session.user.permissions = token.permissions || [];
-        session.user.email = token.email || "";
+      if (session.user) {
+        session.user.role = (token.role as string) || "";
+        session.user.permissions = (token.permissions as string[]) || [];
+        session.user.email = token.email as string;
       }
       return session;
     },
-
-    async signIn({ profile }) {
-      if (!profile?.email) return "/unauthorized";
-
-      const user = await prisma.whitelist.findUnique({
-        where: { email: profile.email },
-      });
-
-      // If user is not in whitelist, block sign in
-      return !!user;
-    },
-
-    authorized({ request, auth }) {
-      const { pathname } = request.nextUrl;
-      const isLoggedIn = !!auth?.user;
-      const userRole = auth?.user?.role;
-      const userPermissions = auth?.user?.permissions || [];
-
-      // 5. Example: Admin Route Protection
-      if (pathname.startsWith("/admin")) {
-        // Check if they are logged in AND have the 'ADMIN' role name
-        return isLoggedIn && userRole === "ADMIN";
-      }
-
-      // 6. Example: Granular Permission Check
-      // If you have a route that requires 'case:read' permission
-      if (pathname.startsWith("/cases")) {
-        return isLoggedIn && userPermissions.includes("case:read");
-      }
-
-      // Dashboard just requires login
-      if (pathname.includes("/dashboard")) return isLoggedIn;
-
-      return true;
-    },
   },
-  session: {
-    strategy: "jwt",
-  },
-} satisfies NextAuthConfig;
-
-export const { handlers, auth, signIn, signOut } = NextAuth(config);
+});

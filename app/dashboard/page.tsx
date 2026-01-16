@@ -1,15 +1,15 @@
-import React from "react";
-import GetUserInfo from "@/components/js/get-user-info";
 import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 import { Metadata } from "next";
 import DashboardInfo from "@/components/dashboard/dashboard-info";
+import { requireAuth } from "@/lib/auth-guard";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
 export default async function Dashboard() {
-  const user = await GetUserInfo();
+  const session = await requireAuth();
+  const user = session?.user;
   return (
     <div className="bg-white min-w-screen min-h-screen md:flex flex-row">
       <NavbarAuthorized />

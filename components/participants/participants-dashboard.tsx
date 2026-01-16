@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { BiUser, BiPencil, BiSearch, BiX } from "react-icons/bi";
+import { BiUser, BiSearch, BiX } from "react-icons/bi";
 import ParticipantDetailDialog from "./participant-detail-dialog"; 
 import Link from "next/link";
 
@@ -141,7 +141,6 @@ export default function ParticipantsDashboard({
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/3">
                         Observatører
                       </th>
-                      <th className="px-6 py-3 w-1/12"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -203,13 +202,6 @@ export default function ParticipantsDashboard({
                               <span className="text-gray-400 italic text-xs">
                                 {searchTerm ? "Ingen treff" : "Ingen observatører"}
                               </span>
-                            )}
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-6 py-4 text-right">
-                            {canWrite && (
-                              <BiPencil className="size-4 text-gray-400 hover:text-gray-600 cursor-pointer" />
                             )}
                           </td>
                         </tr>
