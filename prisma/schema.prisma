@@ -7,19 +7,154 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// --- GLOBAL SETTINGS (Shared across all conferences) ---
+
 model Whitelist {
-  id       Int      @id @default(autoincrement())
-  email    String   @unique
-  roleId  Int?   
-  role    Role?  @relation(fields: [roleId], references: [id])
-  regionId  Int?
-  region    Region? @relation("UserToRegion", fields: [regionId], references: [id])
-  reportedIncidents HMS[]     @relation("ReporterToHMS")
+  id              Int           @id @default(autoincrement())
+  email           String        @unique
+  roleId          Int?   
+  role            Role?         @relation(fields: [roleId], references: [id])
+  regionId        Int?
+  region          Region?       @relation("UserToRegion", fields: [regionId], references: [id])
+  
+  reportedIncidents HMS[]       @relation("ReporterToHMS")
   hmsActions        HMS_actions[] @relation("UserToHMSAction")
+}
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?
+  users       Whitelist[]
+  permissions Permission[] 
+}
+
+model Permission {
+  id          Int     @id @default(autoincrement())
+  slug        String  @unique 
+  description String?
+  roles       Role[]
+}
+
+model Region {
+  id            Int @id @default(autoincrement())
+  name          String @unique
+  internal      Boolean @default(false)
+  participants  Participant[] @relation("ParticipantToRegion")
+  organizations Organization[] @relation("OrganizationToRegion")
+  users         Whitelist[] @relation("UserToRegion")
+  
+  // 💡 Relation to Conference (A region can host multiple conferences)
+  conferences   Conference[]
+}
+
+model Organization {
+  id              Int     @id @default(autoincrement())
+  name            String  @unique
+  canVote         Boolean
+
+  regionId        Int
+  region          Region @relation("OrganizationToRegion", fields: [regionId], references: [id])
+  participants    Participant[] @relation("ParticipantToOrganization")
+}
+
+model Config {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+// --- CONFERENCE SPECIFIC MODELS ---
+
+model Conference {
+  id          Int       @id @default(autoincrement())
+  name        String    
+  shortname   String    @unique 
+  
+  active      Boolean   @default(false)
+  archived    Boolean   @default(false)
+  
+  startDate   DateTime
+  endDate     DateTime
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Data belonging to this specific conference
+  participants Participant[]
+  formReplies  FormReply[]
+  cases        Case[]
+  hmsIncidents HMS[]
+
+  // 💡 Optional: Regional Conference Support
+  global      Boolean @default(false)
+  regionId    Int?
+  region      Region? @relation(fields: [regionId], references: [id])
+}
+
+model Participant {
+  id              Int   @id @default(autoincrement())
+  
+  // 💡 FIXED: Relation linked to correct field (conferenceId)
+  conferenceId    Int
+  conference      Conference @relation(fields: [conferenceId], references: [id])
+
+  name            String
+  
+  // 💡 FIXED: Removed @unique. Uniqueness is handled by @@unique below.
+  email           String 
+  
+  tel             String
+  type            ParticipantType
+  participant_id  String? 
+  gender          Gender
+  dob             DateTime
+  mealPreference  String?
+  allergy         String?
+  hotel           String?
+  arrival         String?
+  departure       String?
+  
+  family          String
+  family_relation String
+  family_tel      String
+
+  school_contact           String
+  school_contact_relation  String
+  school_contact_tel       String
+  
+  previousConferences      Int
+  elected_representative   Boolean
+
+  docs_approved_once       Boolean @default(false)
+  docs_approved_twice      Boolean @default(false)
+  
+  room_number     String?
+  notes           String?
+
+  checked_in      Boolean @default(false)
+  isAbsent        Boolean @default(false)
+
+  // Relations
+  regionId        Int
+  region          Region @relation("ParticipantToRegion", fields: [regionId], references: [id])
+
+  organizationId  Int
+  organization    Organization  @relation("ParticipantToOrganization", fields: [organizationId], references: [id])
+
+  hms             HMS[] @relation("ParticipantToHMS")
+  cases           Case[]  @relation("ParticipantToCases")
+
+  // 💡 Composite Key: Ensures email is unique ONLY within this specific conference
+  @@unique([email, conferenceId])
 }
 
 model FormReply {
   id              Int              @id @default(autoincrement())
+  
+  conferenceId    Int
+  conference      Conference       @relation(fields: [conferenceId], references: [id])
+
   name            String
   email           String
   tel             String
@@ -40,8 +175,13 @@ model FormReply {
 
 model Case {
   id              Int               @id @default(autoincrement())
+  
+  conferenceId    Int
+  conference      Conference        @relation(fields: [conferenceId], references: [id])
+
   formReplyId     Int               @unique
   formReply       FormReply         @relation("FormReplyToCase", fields: [formReplyId], references: [id])
+  
   id_swapped      Boolean           @default(false)
   status          Boolean?
   reason_rejected String?
@@ -51,149 +191,60 @@ model Case {
   reviewedAt      DateTime?
   hmsFlag         Boolean           @default(false)
 
-  hmsIncidentId Int? @unique
-  hmsIncident   HMS? @relation("CaseToHMS")
+  hmsIncidentId   Int? @unique
+  hmsIncident     HMS? @relation("CaseToHMS")
 
   participantObjectId Int? 
   participant     Participant? @relation("ParticipantToCases", fields: [participantObjectId], references: [id])
 }
 
-model Config {
-  id    Int  @id @default(autoincrement())
-  key   String @unique
-  value String
-}
-
-model Role {
-  id          Int          @id @default(autoincrement())
-  name        String       @unique
-  description String?
-  
-  users       Whitelist[]
-  permissions Permission[] 
-}
-
-model Permission {
-  id          Int     @id @default(autoincrement())
-  slug        String  @unique 
-  description String?
-
-  roles       Role[]
-}
-
 model HMS {
   id               Int       @id @default(autoincrement())
   
+  conferenceId     Int
+  conference       Conference @relation(fields: [conferenceId], references: [id])
+
   // Incident Details
   incidentType     HmsType 
   description      String
-  location         String?   // Where did it happen?
+  location         String?   
   timeOfIncident   DateTime  @default(now())
   
-  // Participant Details (Who was involved)
-  participantId    String?   // Identifier of the participant (e.g., skiltnr.)
+  // Participant Details
+  participantId    String?   
   participantName  String?   
   
   participantObjectId Int?
   participantObject Participant? @relation("ParticipantToHMS", fields: [participantObjectId], references: [id])
 
   // Reporting Details
-  reportedById     Int       // Foreign key to the Whitelist table (the person logging the event)
+  reportedById     Int       
   reportedBy       Whitelist @relation("ReporterToHMS", fields: [reportedById], references: [id])
   createdAt        DateTime  @default(now())
   
-  // Actions taken related to this incident
+  // Actions
   actions          HMS_actions[] @relation("HmsIncidentActions")
-  caseId        Int?  @unique
-  case          Case? @relation("CaseToHMS", fields: [caseId], references: [id])
+  caseId           Int?  @unique
+  case             Case? @relation("CaseToHMS", fields: [caseId], references: [id])
 }
 
-// 💡 Link actions back to the specific HMS incident
 model HMS_actions {
   id          Int      @id @default(autoincrement())
   
-  // Link to the incident
   hmsIncidentId Int
   hmsIncident   HMS      @relation("HmsIncidentActions", fields: [hmsIncidentId], references: [id])
   
-  // Details of the action taken
   userId      Int
   user        Whitelist @relation("UserToHMSAction", fields: [userId], references: [id])
-  action      String   // e.g., "Contacted participant's team leader", "Administered first aid"
+  action      String   
   timestamp   DateTime @default(now())
 }
 
-// 💡 New Enum for incident categorization
 enum HmsType {
   ILLNESS
   ACCIDENT
   ALLERGY
   OTHER
-}
-
-model Participant {
-  id              Int   @id @default(autoincrement())
-  name            String
-  email           String @unique
-  tel             String
-  type            ParticipantType
-  participant_id  String?
-  gender          Gender
-  dob             DateTime
-  mealPreference  String?
-  allergy         String?
-  hotel           String?
-  arrival         String?
-  departure       String?
-  
-  family          String
-  family_relation String
-  family_tel      String
-
-  school_contact          String
-  school_contact_relation String
-  school_contact_tel      String
-  
-  previousConferences     Int
-  elected_representative  Boolean
-
-  docs_approved_once      Boolean @default(false)
-  docs_approved_twice     Boolean @default(false)
-  
-  room_number     String?
-  notes           String?
-
-  checked_in      Boolean @default(false)
-  
-  hms             HMS[] @relation("ParticipantToHMS")
-
-  regionId        Int
-  region          Region @relation("ParticipantToRegion", fields: [regionId], references: [id])
-
-  organizationId  Int
-  organization    Organization  @relation("ParticipantToOrganization", fields: [organizationId], references: [id])
-
-  cases           Case[]  @relation("ParticipantToCases")
-  isAbsent        Boolean @default(false)
-}
-
-model Region {
-  id            Int @id @default(autoincrement())
-  name          String @unique
-  internal      Boolean @default(false)
-  participants  Participant[] @relation("ParticipantToRegion")
-  organizations Organization[] @relation("OrganizationToRegion")
-  users         Whitelist[] @relation("UserToRegion")
-}
-
-model Organization {
-  id              Int     @id @default(autoincrement())
-  name            String  @unique
-  canVote         Boolean
-
-  regionId        Int
-  region          Region @relation("OrganizationToRegion", fields: [regionId], references: [id])
-  participants    Participant[] @relation("ParticipantToOrganization")
 }
 
 enum Gender {

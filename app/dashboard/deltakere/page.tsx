@@ -30,7 +30,7 @@ export default async function ParticipantsPage() {
   const canWrite = permissions.includes("participant:write");
 
   return (
-    <div className="flex md:flex-row">
+    <div className="flex md:flex-row flex-col">
       <NavbarAuthorized />
       <div className="p-8 max-w-7xl mx-auto w-full">
         <h1 className="text-3xl font-bold mb-6">Deltakeroversikt</h1>

@@ -8,6 +8,7 @@ import {
   BiPlus,
   BiCheck,
   BiX,
+  BiSearch, // Added search icon
 } from "react-icons/bi";
 import {
   createRegion,
@@ -36,6 +37,10 @@ export default function OrgRegionManager({
 }: ManagerProps) {
   const [activeTab, setActiveTab] = useState<"REGIONS" | "ORGS">("REGIONS");
 
+  // --- SEARCH STATE ---
+  const [regionSearch, setRegionSearch] = useState("");
+  const [orgSearch, setOrgSearch] = useState("");
+
   // --- REGION STATE ---
   const [newRegionName, setNewRegionName] = useState("");
   const [newRegionInternal, setNewRegionInternal] = useState(false);
@@ -47,8 +52,18 @@ export default function OrgRegionManager({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- HANDLERS ---
+  // --- FILTERED LISTS ---
+  const filteredRegions = regions.filter((r) =>
+    r.name.toLowerCase().includes(regionSearch.toLowerCase()),
+  );
 
+  const filteredOrgs = organizations.filter(
+    (o) =>
+      o.name.toLowerCase().includes(orgSearch.toLowerCase()) ||
+      o.region.name.toLowerCase().includes(orgSearch.toLowerCase()),
+  );
+
+  // --- HANDLERS ---
   const handleAddRegion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRegionName) return;
@@ -70,7 +85,7 @@ export default function OrgRegionManager({
     const res = await createOrganization(
       newOrgName,
       Number(newOrgRegionId),
-      newOrgVote
+      newOrgVote,
     );
     setIsSubmitting(false);
     if (res.success) {
@@ -83,10 +98,8 @@ export default function OrgRegionManager({
 
   const handleDelete = async (type: "REGION" | "ORG", id: number) => {
     if (!confirm("Er du sikker? Dette kan ikke angres.")) return;
-
     const res =
       type === "REGION" ? await deleteRegion(id) : await deleteOrganization(id);
-
     if (!res.success) alert(res.message);
   };
 
@@ -119,7 +132,6 @@ export default function OrgRegionManager({
       {/* --- REGIONS VIEW --- */}
       {activeTab === "REGIONS" && (
         <div className="space-y-6">
-          {/* Add Form */}
           <form
             onSubmit={handleAddRegion}
             className="bg-gray-50 p-4 rounded-lg border flex gap-4 items-end"
@@ -156,7 +168,18 @@ export default function OrgRegionManager({
             </button>
           </form>
 
-          {/* List */}
+          {/* Region Search Bar */}
+          <div className="relative">
+            <BiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Søk i regioner..."
+              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              value={regionSearch}
+              onChange={(e) => setRegionSearch(e.target.value)}
+            />
+          </div>
+
           <div className="bg-white border rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -171,7 +194,7 @@ export default function OrgRegionManager({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {regions.map((r) => (
+                {filteredRegions.map((r) => (
                   <tr key={r.id}>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       {r.name}
@@ -198,7 +221,6 @@ export default function OrgRegionManager({
       {/* --- ORGANIZATIONS VIEW --- */}
       {activeTab === "ORGS" && (
         <div className="space-y-6">
-          {/* Add Form */}
           <form
             onSubmit={handleAddOrg}
             className="bg-gray-50 p-4 rounded-lg border grid grid-cols-1 md:grid-cols-4 gap-4 items-end"
@@ -254,7 +276,18 @@ export default function OrgRegionManager({
             </button>
           </form>
 
-          {/* List */}
+          {/* Org Search Bar */}
+          <div className="relative">
+            <BiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Søk i organisasjoner eller regioner..."
+              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              value={orgSearch}
+              onChange={(e) => setOrgSearch(e.target.value)}
+            />
+          </div>
+
           <div className="bg-white border rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -272,7 +305,7 @@ export default function OrgRegionManager({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {organizations.map((o) => (
+                {filteredOrgs.map((o) => (
                   <tr key={o.id}>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       {o.name}
