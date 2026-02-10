@@ -373,7 +373,7 @@ async function processExcelBuffer(buffer: Buffer) {
       }
     }
 
-    revalidatePath("/dashboard/participants");
+    revalidatePath("/hjem/participants");
     return {
       success: true,
       message: `Sync fullført. Opprettet/Oppdatert: ${createdCount}, Hoppet over: ${skippedCount}`,

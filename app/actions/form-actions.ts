@@ -93,7 +93,7 @@ export async function submitApplication(data: ApplicationFormData) {
       },
     });
 
-    revalidatePath("/dashboard/soknader");
+    revalidatePath("/hjem/soknader");
     return { success: true };
   } catch (error) {
     console.error("Error submitting application:", error);

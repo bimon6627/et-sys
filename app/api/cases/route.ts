@@ -1,7 +1,6 @@
 // app/api/cases.ts
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-// import { getToken } from "next-auth/jwt"; // Remove this line
 import { auth } from "@/auth"; // Import the auth helper from your auth.ts file (adjust path if needed)
 import { NextResponse } from "next/server"; // Import NextResponse for better JSON responses
 
@@ -230,7 +229,7 @@ export async function GET(req: Request) {
           {
             status: 400, // Bad Request
             headers: { "Content-Type": "application/json" },
-          }
+          },
         );
     }
 

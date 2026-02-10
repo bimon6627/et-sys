@@ -50,7 +50,7 @@ export async function updateEventConfig(startDate: string, endDate: string) {
       });
     }
 
-    revalidatePath("/dashboard/admin");
+    revalidatePath("/hjem/admin");
     return { success: true };
   } catch (error) {
     console.error("Config update failed:", error);

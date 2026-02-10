@@ -33,7 +33,7 @@ export default function Home() {
               </p>
               <SignIn />
               <a
-                href="/dashboard/"
+                href="/hjem/"
                 className="text-center hover:underline hover:text-eo-gray"
               >
                 Allerede logget inn?

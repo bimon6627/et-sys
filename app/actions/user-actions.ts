@@ -37,7 +37,7 @@ export async function createWhitelistUser(formData: FormData) {
       },
     });
 
-    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/hjem/admin/users");
     return { success: true };
   } catch (error: any) {
     if (error.code === "P2002") {
@@ -60,7 +60,7 @@ export async function deleteWhitelistUser(userId: number) {
     });
 
     // Invalidate the path to force the user list to refresh
-    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/hjem/admin/users");
 
     return { success: true };
   } catch (error) {
@@ -72,7 +72,7 @@ export async function deleteWhitelistUser(userId: number) {
 export async function updateWhitelistUser(
   userId: number,
   roleId: number,
-  regionId: number | null
+  regionId: number | null,
 ) {
   await checkAuth();
 
@@ -86,7 +86,7 @@ export async function updateWhitelistUser(
       },
     });
 
-    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/hjem/admin/users");
     return { success: true };
   } catch (error) {
     console.error("Error updating user:", error);

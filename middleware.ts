@@ -6,5 +6,5 @@ export default NextAuth(authConfig).auth;
 
 export const config = {
   // Match all dashboard routes
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/hjem/:path*"],
 };

@@ -1,4 +1,4 @@
-// app/dashboard/admin/import/page.tsx (Original file)
+// app/hjem/admin/import/page.tsx (Original file)
 
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";

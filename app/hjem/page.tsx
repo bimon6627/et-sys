@@ -1,24 +1,25 @@
 import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 import { Metadata } from "next";
-import { auth } from "@/auth";
 import { requireAuth } from "@/lib/auth-guard";
 import { getAvailableConferences } from "@/app/actions/conference-actions";
 import ConferenceCard from "@/components/conference/conference-card";
 import CreateConferenceDialog from "@/components/conference/create-conference-dialog";
-import { BiPlus } from "react-icons/bi";
 
 export const metadata: Metadata = {
-  title: "Arrangementer",
+  title: "Hjem",
 };
 
 export default async function DashboardPage() {
   const session = await requireAuth();
   const permissions = session?.user?.permissions || [];
+  const regionId = session?.user?.regionId?.id || null;
 
   const conferences = await getAvailableConferences();
 
   const canWrite = permissions.includes("conference:write");
+  const canWriteRegional = permissions.includes("conference:write_regional");
   const canDelete = permissions.includes("conference:delete");
+  const canDeleteRegional = permissions.includes("conference:delete_regional");
 
   return (
     <div className="bg-gray-50 min-h-screen flex md:flex-row">
@@ -33,7 +34,12 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          {canWrite && <CreateConferenceDialog />}
+          {canWrite && (
+            <CreateConferenceDialog
+              permissions={permissions}
+              assignedRegionId={regionId}
+            />
+          )}
         </div>
 
         {/* Conference Grid */}
@@ -42,7 +48,13 @@ export default async function DashboardPage() {
             <ConferenceCard
               key={conf.id}
               conference={conf}
-              permissions={{ canWrite, canDelete }}
+              regionId={regionId}
+              permissions={{
+                canWrite,
+                canDelete,
+                canWriteRegional,
+                canDeleteRegional,
+              }}
             />
           ))}
 

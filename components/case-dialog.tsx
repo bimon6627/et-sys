@@ -133,7 +133,11 @@ export default function CaseDialog({
   useEffect(() => {
     if (data) {
       setReviewStatus(
-        data.status === null ? "PENDING" : data.status ? "APPROVED" : "REJECTED"
+        data.status === null
+          ? "PENDING"
+          : data.status
+            ? "APPROVED"
+            : "REJECTED",
       );
       setRejectionReason(data.reason_rejected || "");
 
@@ -160,8 +164,8 @@ export default function CaseDialog({
         reviewStatus === "APPROVED"
           ? true
           : reviewStatus === "REJECTED"
-          ? false
-          : null;
+            ? false
+            : null;
       const res = await reviewCase(data.id, statusBoolean, rejectionReason);
       if (res.success) onCloseAction();
       else alert(res.message);
@@ -204,7 +208,7 @@ export default function CaseDialog({
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value, type } = e.target;
     const val =
@@ -217,7 +221,7 @@ export default function CaseDialog({
     label: string,
     name: string,
     icon?: React.ElementType,
-    className?: string
+    className?: string,
   ) => (
     <div className={className}>
       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -275,7 +279,7 @@ export default function CaseDialog({
                 <BiUser className="text-blue-600 size-5" />
                 <div>
                   <Link
-                    href={`/dashboard/deltakere/${data.participant.id}`}
+                    href={`/hjem/deltakere/${data.participant.id}`}
                     className="text-sm font-bold text-blue-900 hover:underline"
                   >
                     {data.participant.name}
@@ -321,7 +325,7 @@ export default function CaseDialog({
                   "Skiltnr",
                   "participant_id",
                   BiIdCard,
-                  "col-span-1"
+                  "col-span-1",
                 )}
 
                 {/* Email takes 2/3 space */}
@@ -457,8 +461,8 @@ export default function CaseDialog({
                         {data.status === true
                           ? "allerede godkjent"
                           : data.status === false
-                          ? "avvist"
-                          : "ikke behandlet"}
+                            ? "avvist"
+                            : "ikke behandlet"}
                         .
                       </p>
                       <button

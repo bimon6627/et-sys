@@ -6,31 +6,31 @@ import { BiCog, BiUser, BiShield, BiImport, BiBuilding } from "react-icons/bi";
 
 const adminLinks = [
   {
-    href: "/dashboard/admin",
+    href: "/hjem/admin",
     label: "Konfigurasjon",
     icon: BiCog,
     exact: true,
   },
   {
-    href: "/dashboard/admin/roles",
+    href: "/hjem/admin/roles",
     label: "Rollestyring",
     icon: BiShield,
     exact: true,
   },
   {
-    href: "/dashboard/admin/users",
+    href: "/hjem/admin/users",
     label: "Brukerstyring",
     icon: BiUser,
     exact: true,
   },
   {
-    href: "/dashboard/admin/regions",
+    href: "/hjem/admin/regions",
     label: "Regioner og organisasjoner",
     icon: BiBuilding,
     exact: true,
   },
   {
-    href: "/dashboard/admin/import",
+    href: "/hjem/admin/import",
     label: "Dataimport",
     icon: BiImport,
     exact: true,

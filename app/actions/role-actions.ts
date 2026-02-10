@@ -50,7 +50,7 @@ export async function saveRole(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin/roles");
+  revalidatePath("/hjem/admin/roles");
 }
 
 export async function deleteRole(roleId: number) {
@@ -66,5 +66,5 @@ export async function deleteRole(roleId: number) {
     where: { id: roleId },
   });
 
-  revalidatePath("/dashboard/admin/roles");
+  revalidatePath("/hjem/admin/roles");
 }

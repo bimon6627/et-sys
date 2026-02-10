@@ -28,25 +28,25 @@ export const authConfig = {
     authorized({ request, auth }) {
       const { pathname } = request.nextUrl;
       const isLoggedIn = !!auth?.user;
-      
+
       // We cast to 'any' here because the types are defined in auth.ts
       const userPermissions = (auth?.user as any)?.permissions || [];
 
-      // 1. Protect all /dashboard routes
-      if (pathname.startsWith("/dashboard")) {
+      // 1. Protect all /hjem routes
+      if (pathname.startsWith("/hjem")) {
         if (!isLoggedIn) {
-            return false; // Redirects to signIn page
+          return false; // Redirects to signIn page
         }
 
-        // 2. Protect /dashboard/soknader
-        if (pathname.startsWith("/dashboard/soknader")) {
+        // 2. Protect /hjem/soknader
+        if (pathname.endsWith("/hjem/soknader")) {
           if (!userPermissions.includes("case:read")) {
             return Response.redirect(new URL("/unauthorized", request.nextUrl));
           }
         }
 
-        // 3. Protect /dashboard/admin
-        if (pathname.startsWith("/dashboard/admin")) {
+        // 3. Protect /hjem/admin
+        if (pathname.startsWith("/hjem/admin")) {
           if (!userPermissions.includes("admin:view")) {
             return Response.redirect(new URL("/unauthorized", request.nextUrl));
           }

@@ -1,25 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogBackdrop,
   DialogPanel,
   DialogTitle,
 } from "@headlessui/react";
-import { BiPlus, BiCalendar, BiRename, BiHash } from "react-icons/bi";
-import { createConference } from "@/app/actions/conference-actions";
+import { BiPlus, BiRename, BiHash, BiMap, BiChevronDown } from "react-icons/bi";
+import {
+  createConference,
+  getAllRegions,
+} from "@/app/actions/conference-actions";
 
-export default function CreateConferenceDialog() {
+// 1. Define Props for the component
+interface CreateConferenceDialogProps {
+  permissions: string[];
+  assignedRegionId: number | null;
+}
+
+interface ConferenceForm {
+  name: string;
+  shortname: string;
+  regionId: number | null;
+  startDate: string;
+  endDate: string;
+}
+
+// 2. Remove 'async' and accept props
+export default function CreateConferenceDialog({
+  permissions,
+  assignedRegionId,
+}: CreateConferenceDialogProps) {
+  // Note: We don't fetch auth() here. We use the props passed down.
+
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableRegions, setAvailableRegions] = useState<
+    { id: number; name: string }[]
+  >([]);
 
-  const [form, setForm] = useState({
+  const hasGlobalWrite = permissions.includes("conference:write");
+  const hasRegionalWrite = permissions.includes("conference:write_regional");
+
+  const [form, setForm] = useState<ConferenceForm>({
     name: "",
     shortname: "",
+    regionId: null,
     startDate: "",
     endDate: "",
   });
+
+  // Fetch regions on mount if the user is a Global Admin
+  useEffect(() => {
+    if (hasGlobalWrite) {
+      const fetchRegions = async () => {
+        const regions = await getAllRegions();
+        setAvailableRegions(regions);
+      };
+      fetchRegions();
+    }
+  }, [hasGlobalWrite]);
+
+  // Effect: Auto-set region for Regional Admins when dialog opens
+  useEffect(() => {
+    if (isOpen && !hasGlobalWrite && hasRegionalWrite && assignedRegionId) {
+      setForm((prev) => ({ ...prev, regionId: assignedRegionId }));
+    }
+  }, [isOpen, hasGlobalWrite, hasRegionalWrite, assignedRegionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +78,13 @@ export default function CreateConferenceDialog() {
     setIsSubmitting(false);
     if (res.success) {
       setIsOpen(false);
-      setForm({ name: "", shortname: "", startDate: "", endDate: "" });
+      setForm({
+        name: "",
+        shortname: "",
+        startDate: "",
+        endDate: "",
+        regionId: !hasGlobalWrite && hasRegionalWrite ? assignedRegionId : null,
+      });
     } else {
       alert(res.message);
     }
@@ -98,6 +152,37 @@ export default function CreateConferenceDialog() {
                   />
                 </div>
               </div>
+
+              {/* Region Dropdown */}
+              {hasGlobalWrite && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                    Region
+                  </label>
+                  <div className="relative">
+                    <BiMap className="absolute top-2.5 left-3 text-gray-400 pointer-events-none" />
+                    <select
+                      className="w-full border rounded-lg p-2 pl-10 appearance-none bg-white text-gray-700"
+                      value={form.regionId ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm({
+                          ...form,
+                          regionId: val === "" ? null : Number(val),
+                        });
+                      }}
+                    >
+                      <option value="">Nasjonalt (Ingen region)</option>
+                      {availableRegions.map((region) => (
+                        <option key={region.id} value={region.id}>
+                          {region.name}
+                        </option>
+                      ))}
+                    </select>
+                    <BiChevronDown className="absolute top-3 right-3 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+              )}
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">

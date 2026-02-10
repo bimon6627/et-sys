@@ -7,7 +7,8 @@ import {
   BiUser,
   BiShield,
   BiInfoCircle,
-  BiSolidFilePdf 
+  BiSolidFilePdf,
+  BiHome,
 } from "react-icons/bi";
 
 // 1. Define the structure of a navigation item
@@ -21,40 +22,43 @@ type NavItem = {
 
 // 2. Organize links into groups (to keep your border separators)
 const NAV_GROUPS: NavItem[][] = [
+  [{ label: "Hjem", href: "/hjem", icon: BiHome }],
   [
-    { label: "Dashboard", href: "/dashboard", icon: BiLayout },
+    { label: "Dashboard", href: "/hjem", icon: BiLayout }, //Conference dashboard /hjem/[conferenceId]
     {
       label: "Permisjonssøknader",
-      href: "/dashboard/soknader",
+      href: "/hjem/soknader",
       icon: BiColumns,
       permission: "case:read",
-    },
+    }, // Leave of absence requests under /hjem/[conferenceId]/soknader
     {
       label: "Permisjonsskjema",
-      href: "/dashboard/permisjonssoknad",
+      href: "/hjem/permisjonssoknad",
       icon: BiFile,
-    },
+    }, // Leave of absence form under /hjem/[conferenceId]/permisjonssoknad
     {
       label: "HMS",
-      href: "/dashboard/hms",
+      href: "/hjem/hms",
       icon: BiPlusMedical,
       permission: "hse:read",
-    },
+    }, // Health, safety and environment incidents under /hjem/[conferenceId]/hms
     {
       label: "Deltakere",
-      href: "/dashboard/deltakere",
+      href: "/hjem/deltakere",
       icon: BiUser,
       permission: "participant:read",
-    },
+    }, // Conference participants under /hjem/[conferenceId]/deltakere
     {
       label: "Mine deltakere",
-      href: "/dashboard/deltakere",
+      href: "/hjem/deltakere",
       icon: BiUser,
       permission: "participant:regional_read",
-    },
+    }, // Conference participants under /hjem/[conferenceId]/deltakere
+  ],
+  [
     {
       label: "Forslagsblekke",
-      href: "/dashboard/forslagsblekke",
+      href: "/hjem/forslagsblekke",
       icon: BiSolidFilePdf,
     },
   ],
@@ -62,11 +66,11 @@ const NAV_GROUPS: NavItem[][] = [
     // 3. The Dynamic Check: This only appears if user has 'admin:view'
     {
       label: "Admin",
-      href: "/dashboard/admin",
+      href: "/hjem/admin",
       icon: BiShield,
       permission: "admin:view",
     },
-    { label: "Hjelp", href: "/dashboard/hjelp", icon: BiInfoCircle },
+    { label: "Hjelp", href: "/hjem/hjelp", icon: BiInfoCircle },
   ],
 ];
 

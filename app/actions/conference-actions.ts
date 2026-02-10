@@ -10,7 +10,6 @@ async function getUserContext() {
   const session = await auth();
   if (!session?.user?.email) return null;
 
-  // Fetch full user details to get regionId
   const user = await prisma.whitelist.findUnique({
     where: { email: session.user.email },
     include: { role: { include: { permissions: true } } },
@@ -18,7 +17,6 @@ async function getUserContext() {
 
   if (!user) return null;
 
-  // Flatten permissions
   const permissions = user.role?.permissions.map((p) => p.slug) || [];
 
   return {
@@ -28,8 +26,19 @@ async function getUserContext() {
   };
 }
 
-// --- FETCH ACTIONS ---
+export async function getAllRegions() {
+  try {
+    return await prisma.region.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true }, // We only need ID and Name
+    });
+  } catch (error) {
+    return [];
+  }
+}
 
+// --- FETCH ACTIONS ---
+// (Kept as is, assuming logic works for your needs)
 export async function getAvailableConferences() {
   const user = await getUserContext();
   if (!user) return [];
@@ -42,26 +51,20 @@ export async function getAvailableConferences() {
   try {
     const whereClause: any = {};
 
-    // 💡 Filter Logic
     if (canReadAll) {
-      // Admins see everything (no filter on region)
+      // Admins see everything
     } else if (canReadRegional) {
-      // Regional users see: Their region OR Global conferences (regionId is null)
+      // Regional users see: Their region OR Global conferences
       whereClause.OR = [{ regionId: user.regionId }, { regionId: null }];
-      // Hide archived conferences for normal users? (Optional, usually good UX)
-      // whereClause.archived = false;
     }
 
     const conferences = await prisma.conference.findMany({
       where: whereClause,
       include: {
-        region: { select: { name: true } },
-        _count: { select: { participants: true } }, // Show stats
+        region: { select: { name: true, id: true } },
+        _count: { select: { participants: true } },
       },
-      orderBy: [
-        { active: "desc" }, // Active first
-        { startDate: "desc" }, // Then newest
-      ],
+      orderBy: [{ active: "desc" }, { startDate: "desc" }],
     });
 
     return conferences;
@@ -75,12 +78,31 @@ export async function getAvailableConferences() {
 
 export async function createConference(data: any) {
   const user = await getUserContext();
-  if (!user?.permissions.includes("conference:write")) {
-    throw new Error("Unauthorized");
+  if (!user) return { success: false, message: "Unauthorized" };
+
+  const hasGlobalWrite = user.permissions.includes("conference:write");
+  const hasRegionalWrite = user.permissions.includes(
+    "conference:write_regional",
+  );
+
+  if (!hasGlobalWrite && !hasRegionalWrite) {
+    return { success: false, message: "Ingen tilgang." };
   }
 
   try {
-    // Note: You might want to let admins select a region for the conference here
+    let regionId = null;
+
+    if (hasGlobalWrite) {
+      // Global Admin: Trust the ID passed from the dropdown
+      // If data.regionId is empty string or null, it remains null (National)
+      if (data.regionId) {
+        regionId = data.regionId;
+      }
+    } else if (hasRegionalWrite) {
+      // Regional Admin: Force their assigned ID (ignore form input)
+      regionId = user.regionId;
+    }
+
     await prisma.conference.create({
       data: {
         name: data.name,
@@ -89,19 +111,23 @@ export async function createConference(data: any) {
         endDate: new Date(data.endDate),
         active: true,
         archived: false,
-        // regionId: data.regionId // If you add this to the form later
+        regionId: regionId,
       },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/hjem");
     return { success: true };
   } catch (error) {
-    return { success: false, message: "Kunne ikke opprette konferanse." };
+    return { success: false, message: "Feil ved opprettelse: " + error };
   }
 }
 
 export async function toggleArchiveConference(id: number, archive: boolean) {
   const user = await getUserContext();
+
+  // NOTE: You might need to update this logic too if regional users
+  // should be allowed to archive their OWN conferences.
+  // For now, leaving it restricted to global write or delete permissions.
   if (!user?.permissions.includes("conference:write")) {
     return { success: false, message: "Ingen tilgang." };
   }
@@ -111,10 +137,10 @@ export async function toggleArchiveConference(id: number, archive: boolean) {
       where: { id },
       data: {
         archived: archive,
-        active: !archive, // Usually if archived, it's not active
+        active: !archive,
       },
     });
-    revalidatePath("/dashboard");
+    revalidatePath("/hjem");
     return { success: true };
   } catch (error) {
     return { success: false, message: "Feil ved arkivering." };
@@ -129,7 +155,7 @@ export async function deleteConference(id: number) {
 
   try {
     await prisma.conference.delete({ where: { id } });
-    revalidatePath("/dashboard");
+    revalidatePath("/hjem");
     return { success: true };
   } catch (error) {
     return {

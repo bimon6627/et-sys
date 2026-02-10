@@ -17,17 +17,36 @@ import { useState } from "react";
 
 interface ConferenceCardProps {
   conference: any;
+  // Assuming the parent passes the raw ID (e.g., 5).
+  // If parent passes {id:5}, change this to { id: number } | null
+  regionId: number | null;
   permissions: {
     canWrite: boolean;
     canDelete: boolean;
+    canWriteRegional: boolean;
+    canDeleteRegional: boolean;
   };
 }
 
 export default function ConferenceCard({
   conference,
+  regionId,
   permissions,
 }: ConferenceCardProps) {
   const [loading, setLoading] = useState(false);
+
+  // 1. Safe Extraction: Get the conference's region ID (handle nulls safely)
+  const conferenceRegionId = conference.region?.id;
+
+  // 2. Logic Calculation: Determine access before the return statement
+  const isGlobalAdmin = permissions.canDelete;
+
+  // Check if they have regional permission AND the IDs match
+  const isRegionalAdmin =
+    permissions.canDeleteRegional && conferenceRegionId === regionId;
+
+  // Combine them: User can manage if they are Global OR Regional Owner
+  const canManage = isGlobalAdmin || isRegionalAdmin;
 
   const formatDate = (d: Date) => new Date(d).toLocaleDateString("no-NO");
 
@@ -92,7 +111,8 @@ export default function ConferenceCard({
         </div>
         <div className="flex items-center gap-2">
           <BiMap className="text-gray-400" />
-          <span>{conference.region?.name || "Nasjonal / Alle"}</span>
+          {/* Use optional chaining here just in case region is null */}
+          <span>{conference.region?.name || "Nasjonal"}</span>
         </div>
         <div className="flex items-center gap-2">
           <BiUser className="text-gray-400" />
@@ -103,36 +123,37 @@ export default function ConferenceCard({
       {/* Actions */}
       <div className="flex gap-2 pt-4 border-t">
         <Link
-          href={`/dashboard?conf=${conference.id}`}
-          className="flex-1 bg-gray-900 text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+          href={`/hjem/${conference.shortname}`}
+          className="flex-1 bg-blue-600 text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
         >
           Gå til Dashboard
         </Link>
 
-        {permissions.canWrite && (
-          <button
-            onClick={handleArchive}
-            disabled={loading}
-            title={conference.archived ? "Gjenopprett" : "Arkiver"}
-            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-          >
-            {conference.archived ? (
-              <BiCheckCircle size={20} />
-            ) : (
-              <BiArchiveIn size={20} />
-            )}
-          </button>
-        )}
+        {/* 3. Simplified Rendering: Use the pre-calculated variable */}
+        {canManage && (
+          <>
+            <button
+              onClick={handleArchive}
+              disabled={loading}
+              title={conference.archived ? "Gjenopprett" : "Arkiver"}
+              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              {conference.archived ? (
+                <BiCheckCircle size={20} />
+              ) : (
+                <BiArchiveIn size={20} />
+              )}
+            </button>
 
-        {permissions.canDelete && (
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            title="Slett"
-            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <BiTrash size={20} />
-          </button>
+            <button
+              onClick={handleDelete}
+              disabled={loading}
+              title="Slett"
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <BiTrash size={20} />
+            </button>
+          </>
         )}
       </div>
     </div>

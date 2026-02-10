@@ -22,7 +22,7 @@ export async function createRegion(name: string, internal: boolean) {
     await prisma.region.create({
       data: { name, internal },
     });
-    revalidatePath("/dashboard/admin/regions");
+    revalidatePath("/hjem/admin/regions");
     return { success: true };
   } catch (_e) {
     return {
@@ -36,7 +36,7 @@ export async function deleteRegion(id: number) {
   await checkAdminAuth();
   try {
     await prisma.region.delete({ where: { id } });
-    revalidatePath("/dashboard/admin/regions");
+    revalidatePath("/hjem/admin/regions");
     return { success: true };
   } catch (_e) {
     return {
@@ -52,14 +52,14 @@ export async function deleteRegion(id: number) {
 export async function createOrganization(
   name: string,
   regionId: number,
-  canVote: boolean
+  canVote: boolean,
 ) {
   await checkAdminAuth();
   try {
     await prisma.organization.create({
       data: { name, regionId, canVote },
     });
-    revalidatePath("/dashboard/admin/regions");
+    revalidatePath("/hjem/admin/regions");
     return { success: true };
   } catch (_e) {
     return { success: false, message: "Kunne ikke opprette organisasjon." };
@@ -70,7 +70,7 @@ export async function deleteOrganization(id: number) {
   await checkAdminAuth();
   try {
     await prisma.organization.delete({ where: { id } });
-    revalidatePath("/dashboard/admin/regions");
+    revalidatePath("/hjem/admin/regions");
     return { success: true };
   } catch (_e) {
     return {

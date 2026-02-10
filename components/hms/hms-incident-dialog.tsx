@@ -82,7 +82,7 @@ const ParticipantSearchAndSelect: React.FC<ParticipantSearchProps> = ({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedName, setSelectedName] = useState(
-    initialParticipantName || ""
+    initialParticipantName || "",
   );
 
   // Debounced search logic
@@ -236,7 +236,7 @@ export default function HmsIncidentDialog({
   const handleDetailChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setDetails((prev) => ({
@@ -296,7 +296,7 @@ export default function HmsIncidentDialog({
         await updateHmsMedicalLeave(
           incident.case.id,
           new Date(leaveDates.from),
-          new Date(leaveDates.to)
+          new Date(leaveDates.to),
         );
         alert("Permisjon oppdatert.");
         setIsLeaveEditing(false);
@@ -306,7 +306,7 @@ export default function HmsIncidentDialog({
           incident.id,
           details.participantObjectId,
           new Date(leaveDates.from),
-          new Date(leaveDates.to)
+          new Date(leaveDates.to),
         );
         alert("Permisjon opprettet.");
         setIsLeaveEditing(false);
@@ -383,7 +383,7 @@ export default function HmsIncidentDialog({
                 <BiUser className="text-blue-600 size-5" />
                 <div>
                   <Link
-                    href={`/dashboard/deltakere/${details.participantObjectId}`}
+                    href={`/hjem/deltakere/${details.participantObjectId}`}
                     className="text-sm font-bold text-blue-900 hover:underline"
                   >
                     {details.participantName}

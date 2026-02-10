@@ -88,7 +88,7 @@ export async function submitHmsIncident(formData: FormData) {
       },
     });
 
-    revalidatePath("/dashboard/hms/report"); // Ensure cache is cleared
+    revalidatePath("/hjem/hms/report"); // Ensure cache is cleared
     return { success: true };
   } catch (error) {
     console.error("Error submitting HMS incident:", error);
@@ -144,7 +144,7 @@ export async function addHmsAction(incidentId: number, actionText: string) {
   });
 
   // You must revalidate the path to force the dashboard/dialog to refresh
-  revalidatePath("/dashboard/hms/report");
+  revalidatePath("/hjem/hms/report");
 }
 
 export async function deleteHmsIncident(incidentId: number) {
@@ -160,7 +160,7 @@ export async function deleteHmsIncident(incidentId: number) {
     where: { id: incidentId },
   });
 
-  revalidatePath("/dashboard/hms/report");
+  revalidatePath("/hjem/hms/report");
 }
 
 export async function getHmsActionsByIncident(hmsIncidentId: number) {
@@ -188,7 +188,7 @@ export async function getHmsActionsByIncident(hmsIncidentId: number) {
   } catch (error) {
     console.error(
       `Error fetching HMS actions for incident ${hmsIncidentId}:`,
-      error
+      error,
     );
     return [];
   }
@@ -204,7 +204,7 @@ export async function updateHmsIncidentDetails(
     participantName: string | null;
     // 🚨 ADD THIS NEW FOREIGN KEY FIELD:
     participantObjectId: number | null;
-  }
+  },
 ) {
   await checkHmsWriteAuth();
 
@@ -281,7 +281,7 @@ export async function createHmsMedicalLeave(
   hmsIncidentId: number,
   participantObjectId: number,
   from: Date,
-  to: Date
+  to: Date,
 ) {
   await checkHmsWriteAuth();
 
@@ -325,7 +325,7 @@ export async function createHmsMedicalLeave(
       },
     });
 
-    revalidatePath("/dashboard/hms/report");
+    revalidatePath("/hjem/hms/report");
     return { success: true };
   } catch (error) {
     console.error("Create Leave Error:", error);
@@ -337,7 +337,7 @@ export async function createHmsMedicalLeave(
 export async function updateHmsMedicalLeave(
   caseId: number,
   from: Date,
-  to: Date
+  to: Date,
 ) {
   await checkHmsWriteAuth();
 
@@ -356,7 +356,7 @@ export async function updateHmsMedicalLeave(
       data: { from, to },
     });
 
-    revalidatePath("/dashboard/hms/report");
+    revalidatePath("/hjem/hms/report");
     return { success: true };
   } catch (error) {
     console.error("Update Leave Error:", error);

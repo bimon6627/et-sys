@@ -93,7 +93,7 @@ export async function getFilteredCases(filter: string) {
 export async function reviewCase(
   caseId: number,
   status: boolean | null,
-  reason_rejected: string
+  reason_rejected: string,
 ) {
   const reviewerEmail = await checkPermission("case:write");
 
@@ -185,24 +185,23 @@ export async function reviewCase(
             <p>Hei ${updatedCase.formReply.name},</p>
             <p>Din søknad om permisjon er <strong>godkjent</strong>.</p>
             <p>Du har fått innvilget permisjon i tidsrommet ${updatedCase.formReply.from.toLocaleString(
-              "no-NO"
+              "no-NO",
             )} - ${updatedCase.formReply.to.toLocaleString("no-NO")}</p>
             ` +
         (updatedCase.formReply.has_observer
           ? `<p>Husk å bytte skilt med observatøren din når du skal dra.</p>`
           : "") +
-          '<p style="font-size: 13px; font-style: italic; color: #666;">Denne e-posten kan ikke besvares.</p>' 
-          +
+        '<p style="font-size: 13px; font-style: italic; color: #666;">Denne e-posten kan ikke besvares.</p>' +
         signature;
     } else if (status === false) {
       subject = "Permisjonssøknad Avvist";
       messageBody = `
             <p>Hei ${updatedCase.formReply.name},</p>
             <p>Din søknad om permisjon fra ${updatedCase.formReply.from.toLocaleString(
-              "no-NO"
+              "no-NO",
             )} til ${updatedCase.formReply.to.toLocaleString(
-        "no-NO"
-      )} er <strong>avvist</strong>.</p>
+              "no-NO",
+            )} er <strong>avvist</strong>.</p>
             <p><strong>Årsak:</strong></p>
             <p style="padding-left: 20px;">${reason_rejected}</p>
             <p>Dersom du mener dette er feil, vennligst ta kontakt med oss i infokiosk.</p>
@@ -227,7 +226,7 @@ export async function reviewCase(
       });
     }
 
-    revalidatePath("/dashboard/soknader");
+    revalidatePath("/hjem/soknader");
     return { success: true };
   } catch (error) {
     console.error("Error reviewing case:", error);
@@ -264,7 +263,7 @@ export async function updateCaseFormData(formId: number, formData: any) {
       },
     });
 
-    revalidatePath("/dashboard/soknader");
+    revalidatePath("/hjem/soknader");
     return { success: true };
   } catch (error) {
     console.error("Error updating form data:", error);
@@ -288,7 +287,7 @@ export async function deleteCase(caseId: number) {
       await prisma.formReply.delete({ where: { id: caseItem.formReplyId } });
     }
 
-    revalidatePath("/dashboard/soknader");
+    revalidatePath("/hjem/soknader");
     return { success: true };
   } catch (error) {
     console.error("Error deleting case:", error);

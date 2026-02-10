@@ -109,7 +109,7 @@ const getParticipant = cache(
   async (
     id: number,
     canViewHms: boolean = false,
-    canViewCases: boolean = false
+    canViewCases: boolean = false,
   ) => {
     return await prisma.participant.findUnique({
       where: { id },
@@ -139,7 +139,7 @@ const getParticipant = cache(
           : false,
       },
     });
-  }
+  },
 );
 
 // --- The Page Component ---
@@ -165,7 +165,7 @@ export default async function ParticipantDetailsPage({
         {/* Header / Back Button */}
         <div className="mb-6">
           <Link
-            href="/dashboard/deltakere"
+            href="/hjem/deltakere"
             className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <BiArrowBack className="mr-2" /> Tilbake til oversikt

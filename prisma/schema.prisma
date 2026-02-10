@@ -19,6 +19,8 @@ model Whitelist {
   
   reportedIncidents HMS[]       @relation("ReporterToHMS")
   hmsActions        HMS_actions[] @relation("UserToHMSAction")
+
+  conferenceOrganizer ConferenceOrganizer[]
 }
 
 model Role {
@@ -33,13 +35,20 @@ model Permission {
   id          Int     @id @default(autoincrement())
   slug        String  @unique 
   description String?
+  isSystemPermission  Boolean @default(false)
   roles       Role[]
+  conferenceRoles ConferenceRole[]
 }
 
 model Region {
   id            Int @id @default(autoincrement())
   name          String @unique
-  internal      Boolean @default(false)
+  global      Boolean @default(false)
+
+  parentId      Int?
+  parent        Region?   @relation("RegionHierarchy", fields: [parentId], references: [id])
+  children      Region[]  @relation("RegionHierarchy")
+
   participants  Participant[] @relation("ParticipantToRegion")
   organizations Organization[] @relation("OrganizationToRegion")
   users         Whitelist[] @relation("UserToRegion")
@@ -90,6 +99,29 @@ model Conference {
   global      Boolean @default(false)
   regionId    Int?
   region      Region? @relation(fields: [regionId], references: [id])
+
+  conferenceRoles ConferenceRole[]
+  conferenceOrganizers ConferenceOrganizer[]
+}
+
+model ConferenceRole {
+  id          Int @id @default(autoincrement())
+  name        String
+  description String?
+  conference  Conference? @relation(fields: [conferenceId], references: [id])
+  conferenceId Int?
+  organizer   ConferenceOrganizer[]
+  permissions Permission[]
+}
+
+model ConferenceOrganizer {
+  id        Int @id @default(autoincrement())
+  user      Whitelist @relation(fields: [userId], references: [id])
+  userId Int
+  conference Conference @relation(fields: [conferenceId], references: [id])
+  conferenceId Int
+  role      ConferenceRole    @relation(fields: [roleId], references: [id])
+  roleId Int
 }
 
 model Participant {

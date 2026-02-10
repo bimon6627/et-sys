@@ -8,6 +8,7 @@ declare module "next-auth" {
     user: {
       role?: string;
       permissions: string[];
+      regionId: number;
     } & DefaultSession["user"];
   }
 }
@@ -45,26 +46,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       try {
         const userRecord = await prisma.whitelist.findUnique({
           where: { email },
-          include: { role: { include: { permissions: true } } },
+          include: {
+            role: { include: { permissions: true } },
+            region: { select: { id: true } },
+          },
         });
-        
+
         console.log("User Record Found:", !!userRecord);
 
         if (!userRecord) {
-          token.permissions = ["FORCE_SIGNOUT"]; 
-           token.role = "GUEST";
-           return token;
+          token.permissions = ["FORCE_SIGNOUT"];
+          token.role = "GUEST";
+          return token;
         }
 
         token.role = userRecord.role?.name;
-        token.permissions = userRecord.role?.permissions.map((p) => p.slug) ?? [];
+        token.permissions =
+          userRecord.role?.permissions.map((p) => p.slug) ?? [];
         token.email = userRecord.email;
+        token.regionId = userRecord.region;
         delete token.error; // Clear error if they are back in whitelist
-
       } catch (error) {
         return { ...token, error: "DatabaseError" };
       }
-      
+
       return token;
     },
 
@@ -73,6 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = (token.role as string) || "";
         session.user.permissions = (token.permissions as string[]) || [];
         session.user.email = token.email as string;
+        session.user.regionId = token.regionId as number;
       }
       return session;
     },
