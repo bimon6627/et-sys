@@ -16,28 +16,34 @@ import {
   BiCake,
   BiMaleFemale,
   BiCalendar,
+  BiLock,
 } from "react-icons/bi";
 import GetGender from "@/components/ts/get-gender";
 import ParticipantHmsHistory from "@/components/participants/participant-hms-history";
 import ParticipantAbsenceHistory from "@/components/participants/participant-absence-history";
-import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 import { Metadata } from "next";
 import { cache } from "react";
+import getUserPermissions from "@/components/ts/get-user-permissions";
+
+interface PageParams {
+  conferenceId: string;
+  slug: string;
+}
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<PageParams>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const result = await getParticipantData(slug);
+  const { conferenceId, slug } = await params;
+  const result = await getParticipantData(conferenceId, slug);
 
   if (!result || result === "UNAUTHORIZED" || !result.participant) {
     return { title: "Deltaker" };
   }
 
   return {
-    title: result.participant.name,
+    title: `${result.participant.name} - ${conferenceId}`,
     description: "Detaljert visning av deltaker",
   };
 }
@@ -53,24 +59,35 @@ const formatDate = (date: Date | null | undefined) => {
 };
 
 // --- 1. DATA FETCHING & SECURITY LOGIC ---
-async function getParticipantData(slug: string) {
-  const participantId = parseInt(slug, 10);
+async function getParticipantData(
+  conferenceShortName: string,
+  participantSlug: string,
+) {
+  const participantId = parseInt(participantSlug, 10);
   if (isNaN(participantId)) return null;
 
   const session = await auth();
   if (!session?.user?.email) return "UNAUTHORIZED";
 
-  // 1. Fetch the CURRENT USER to get their Region ID
+  // 1. Resolve Conference ID
+  // We need the numeric ID of the conference to ensure the participant belongs to it
+  const conference = await prisma.conference.findUnique({
+    where: { shortname: conferenceShortName }, // Assuming 'id' is the shortname based on previous context
+    select: { id: true },
+  });
+
+  if (!conference) return null;
+
+  // 2. Fetch User Permissions & Region
   const currentUser = await prisma.whitelist.findUnique({
     where: { email: session.user.email },
     select: { regionId: true },
   });
 
-  const permissions = session?.user?.permissions || [];
+  const permissions = getUserPermissions(conferenceShortName, session.user);
   const hasGlobalRead = permissions.includes("participant:read");
   const hasRegionalRead = permissions.includes("participant:regional_read");
 
-  // Basic Gate: Must have at least one read permission
   if (!hasGlobalRead && !hasRegionalRead) {
     return "UNAUTHORIZED";
   }
@@ -78,15 +95,18 @@ async function getParticipantData(slug: string) {
   const canViewHms = permissions.includes("hse:read");
   const canViewCases = permissions.includes("case:read");
 
-  // 2. Fetch the PARTICIPANT
+  // 3. Fetch the PARTICIPANT
   const data = await getParticipant(participantId, canViewHms, canViewCases);
 
   if (!data) return null;
 
-  // 3. REGIONAL SECURITY CHECK
-  // If user does NOT have global read, enforce region matching
+  // 4. CONTEXT CHECK: Ensure participant belongs to this conference
+  if (data.conferenceId !== conference.id) {
+    return null; // Participant exists, but not in this conference
+  }
+
+  // 5. REGIONAL SECURITY CHECK
   if (!hasGlobalRead) {
-    // If user has no region, or regions don't match -> Deny access
     if (!currentUser?.regionId || currentUser.regionId !== data.regionId) {
       return "UNAUTHORIZED";
     }
@@ -146,11 +166,11 @@ const getParticipant = cache(
 export default async function ParticipantDetailsPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<PageParams>;
 }) {
-  const { slug } = await params;
+  const { conferenceId, slug } = await params;
 
-  const result = await getParticipantData(slug);
+  const result = await getParticipantData(conferenceId, slug);
 
   if (result === "UNAUTHORIZED") redirect("/unauthorized");
   if (!result || !result.participant) notFound();
@@ -160,17 +180,16 @@ export default async function ParticipantDetailsPage({
   // 4. Render UI
   return (
     <div className="flex md:flex-row">
-      <NavbarAuthorized />
       <div className="p-8 max-w-7xl mx-auto w-full">
         {/* Header / Back Button */}
         <div className="mb-6">
           <Link
-            href="/hjem/deltakere"
+            href={`/hjem/${conferenceId}/deltakere`} // 👈 Context-aware back link
             className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <BiArrowBack className="mr-2" /> Tilbake til oversikt
           </Link>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
               <h1 className="text-4xl font-bold text-gray-900">
                 {participant.name}
@@ -205,7 +224,7 @@ export default async function ParticipantDetailsPage({
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
           {/* --- COL 1: BASIC INFO --- */}
           <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
             <h2 className="text-lg font-bold border-b pb-2 mb-4 flex items-center gap-2">
@@ -253,16 +272,27 @@ export default async function ParticipantDetailsPage({
               <BiFirstAid className="text-gray-400" /> Helse & Nødkontakt
             </h2>
 
-            <InfoRow
-              label="Kosthensyn"
-              value={participant.mealPreference}
-              placeholder="Ingen"
-            />
-            <InfoRow
-              label="Allergier"
-              value={participant.allergy}
-              placeholder="Ingen"
-            />
+            {permissions.canReadHse ? (
+              <div className="space-y-4">
+                <InfoRow
+                  label="Kosthensyn"
+                  value={participant.mealPreference}
+                  placeholder="Ingen"
+                />
+                <InfoRow
+                  label="Allergier"
+                  value={participant.allergy}
+                  placeholder="Ingen"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 bg-gray-50 rounded-lg text-gray-500 p-3">
+                <BiLock className="text-xl shrink-0" />
+                <span className="text-sm">
+                  Du har ikke tilgang til å se disse opplysningene.
+                </span>
+              </div>
+            )}
 
             <div className="bg-gray-50 p-3 rounded-lg mt-4">
               <h3 className="font-semibold text-gray-700 text-sm mb-2">

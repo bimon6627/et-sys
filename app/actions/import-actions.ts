@@ -181,7 +181,13 @@ async function refreshLegacySession() {
 
 // --- 3. SHARED PARSING LOGIC ---
 
-async function processExcelBuffer(buffer: Buffer) {
+async function processExcelBuffer(buffer: Buffer, conferenceShortName: string) {
+  const conf = await prisma.conference.findUnique({
+    where: { shortname: conferenceShortName }, // Assuming 'id' is your shortname/slug in Prisma
+  });
+
+  if (!conf) throw new Error(`Conference ${conferenceShortName} not found.`);
+  const conferenceId = conf.id;
   try {
     // Verify buffer isn't HTML
     const startOfFile = buffer.slice(0, 20).toString("utf-8");
@@ -269,25 +275,46 @@ async function processExcelBuffer(buffer: Buffer) {
       const schoolTel = schoolContact?.tel || "00000000";
 
       // Database Operations
-      const region = await prisma.region.upsert({
+      const region = await prisma.region.findUnique({
         where: { name: regionName },
-        update: {},
-        create: { name: regionName },
       });
 
-      const organization = await prisma.organization.upsert({
+      if (!region) {
+        console.warn(
+          `Skipping ${email}: Region '${regionName}' does not exist in database.`,
+        );
+        skippedCount++;
+        continue; // ⛔️ Skip this row
+      }
+
+      const organization = await prisma.organization.findUnique({
         where: { name: orgName },
-        update: { regionId: region.id },
-        create: {
-          name: orgName,
-          regionId: region.id,
-          canVote: sanitizeBoolean(data[headerMap["Status"]] || true),
-        },
       });
+
+      if (!organization) {
+        console.warn(
+          `Skipping ${email}: Organization '${orgName}' does not exist in database.`,
+        );
+        skippedCount++;
+        continue; // ⛔️ Skip this row
+      }
+
+      if (organization.regionId !== region.id) {
+        console.warn(
+          `Skipping ${email}: Organization '${orgName}' does not belong to region '${regionName}'.`,
+        );
+        skippedCount++;
+        continue;
+      }
 
       try {
         await prisma.participant.upsert({
-          where: { email: email },
+          where: {
+            email_conferenceId: {
+              email: email,
+              conferenceId: conferenceId,
+            },
+          },
           update: {
             name: data[headerMap["Navn"]],
             tel: String(data[headerMap["Mobilnummer"]] || ""),
@@ -326,6 +353,7 @@ async function processExcelBuffer(buffer: Buffer) {
             checked_in: sanitizeBoolean(data[headerMap["Sjekket inn"]]),
             regionId: region.id,
             organizationId: organization.id,
+            conferenceId: conferenceId,
           },
           create: {
             email: email,
@@ -364,6 +392,7 @@ async function processExcelBuffer(buffer: Buffer) {
             checked_in: sanitizeBoolean(data[headerMap["Sjekket inn"]]),
             regionId: region.id,
             organizationId: organization.id,
+            conferenceId: conferenceId,
           },
         });
         createdCount++;
@@ -373,10 +402,10 @@ async function processExcelBuffer(buffer: Buffer) {
       }
     }
 
-    revalidatePath("/hjem/participants");
+    revalidatePath(`/hjem/${conferenceShortName}/deltakere`);
     return {
       success: true,
-      message: `Sync fullført. Opprettet/Oppdatert: ${createdCount}, Hoppet over: ${skippedCount}`,
+      message: `Sync fullført for ${conferenceShortName}. Opprettet/Oppdatert: ${createdCount}, Hoppet over: ${skippedCount}`,
     };
   } catch (error: any) {
     console.error("Processing Error:", error);
@@ -387,7 +416,10 @@ async function processExcelBuffer(buffer: Buffer) {
 // --- 4. EXPORTED ACTIONS ---
 
 // A. Manual Upload
-export async function importParticipants(formData: FormData) {
+export async function importParticipants(
+  formData: FormData,
+  conferenceShortName: string,
+) {
   await checkImportAuth();
 
   const file = formData.get("excelFile") as File;
@@ -398,14 +430,14 @@ export async function importParticipants(formData: FormData) {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    return await processExcelBuffer(buffer);
+    return await processExcelBuffer(buffer, conferenceShortName);
   } catch (e: any) {
     return { success: false, message: e.message };
   }
 }
 
 // B. Automatic Sync
-export async function syncFromLegacySystem() {
+export async function syncFromLegacySystem(conferenceShortName: string) {
   await checkImportAuth();
 
   const url = process.env.LEGACY_EXPORT_URL;
@@ -464,7 +496,7 @@ export async function syncFromLegacySystem() {
     // 4. Process
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    return await processExcelBuffer(buffer);
+    return await processExcelBuffer(buffer, conferenceShortName);
   } catch (error: any) {
     console.error("Sync Error:", error);
     return { success: false, message: `Sync feilet: ${error.message}` };

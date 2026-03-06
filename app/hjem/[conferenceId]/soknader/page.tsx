@@ -1,5 +1,3 @@
-import NavbarAuthorized from "@/components/authorized/authorized-navbar";
-
 import { PrismaClient } from "@prisma/client";
 import { Metadata } from "next";
 import CaseTable from "@/components/case-table";
@@ -36,7 +34,6 @@ export default async function Soknader() {
   return (
     <Protect permission="case:read">
       <div className="bg-white max-w-screen min-h-screen md:flex flex-row">
-        <NavbarAuthorized />
         <main className="mx-auto w-full md:mx-5">
           {/* REMOVED: user={user} */}
           <CaseTable initialCases={cases} />

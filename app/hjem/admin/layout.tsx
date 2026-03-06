@@ -1,8 +1,8 @@
 import React from "react";
 import { Metadata } from "next";
-import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 import { Protect } from "@/components/protect"; // For the top-level guard
 import AdminSidebar, { AdminFooter } from "@/components/admin/admin-sidebar"; // New component for admin links
+import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard",
@@ -14,12 +14,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    // Protect the entire admin section with a general permission
     <Protect permission="admin:view">
       <div className="bg-white min-h-screen md:flex md:flex-row">
-        <NavbarAuthorized /> {/* Your existing vertical/mobile navigation */}
+        <NavbarAuthorized />
         <main className="flex flex-col md:flex-row flex-grow w-full">
-          {/* Admin Sidebar for internal navigation (Config, Users, Roles) */}
           <AdminSidebar />
 
           <div className="p-6 md:p-10 flex-grow">{children}</div>

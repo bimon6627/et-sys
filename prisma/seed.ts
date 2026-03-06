@@ -1,2073 +1,1358 @@
-const { PrismaClient } = require("@prisma/client");
-
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting Seeding...");
-
-  // 1. Seed Permissions
-  const permissionsList = [
-    { slug: "case:read", description: "Can view cases" },
-    { slug: "case:write", description: "Can edit/approve cases" },
-    { slug: "case:delete", description: "Can delete cases" },
-    { slug: "admin:view", description: "Can view admin dashboard" },
-    { slug: "users:write", description: "Can create new users" },
-    { slug: "users:read", description: "Can view users" },
-    { slug: "users:delete", description: "Can delete users" },
-    { slug: "hse:write", description: "Can create and modify hse incidents" },
-    { slug: "hse:read", description: "Can view hse incidents" },
-    { slug: "hse:delete", description: "Can delete hse incidents" },
+  // --- 1. PERMISSIONS ---
+  const permissions = [
+    {
+      slug: "case:read",
+      description: "Can view cases",
+      isSystemPermission: false,
+    },
+    {
+      slug: "case:write",
+      description: "Can edit/approve cases",
+      isSystemPermission: false,
+    },
+    {
+      slug: "case:delete",
+      description: "Can delete cases",
+      isSystemPermission: false,
+    },
+    {
+      slug: "hse:write",
+      description: "Can create and modify hse incidents",
+      isSystemPermission: false,
+    },
+    {
+      slug: "hse:read",
+      description: "Can view hse incidents",
+      isSystemPermission: false,
+    },
+    {
+      slug: "hse:delete",
+      description: "Can delete hse incidents",
+      isSystemPermission: false,
+    },
     {
       slug: "participant:write",
       description: "Can create and modify participants",
+      isSystemPermission: false,
     },
-    { slug: "participant:read", description: "Can view participants" },
-    { slug: "participant:delete", description: "can delete participants" },
+    {
+      slug: "participant:read",
+      description: "Can view participants",
+      isSystemPermission: false,
+    },
+    {
+      slug: "participant:delete",
+      description: "can delete participants",
+      isSystemPermission: false,
+    },
     {
       slug: "participant:regional_read",
       description: "Can view participants in the same region",
+      isSystemPermission: false,
+    },
+    {
+      slug: "admin:view",
+      description: "Can view admin dashboard",
+      isSystemPermission: true,
+    },
+    {
+      slug: "conference:write",
+      description: "Can create conferences",
+      isSystemPermission: true,
+    },
+    {
+      slug: "conference:write_regional",
+      description: "Can create conferences limited to the user's region",
+      isSystemPermission: true,
+    },
+    {
+      slug: "conference:read",
+      description: "Can view conferences",
+      isSystemPermission: true,
+    },
+    {
+      slug: "conference:read_regional",
+      description: "Can view conferences limited by the user's region",
+      isSystemPermission: true,
+    },
+    {
+      slug: "conference:delete",
+      description: "Can delete conferences",
+      isSystemPermission: true,
+    },
+    {
+      slug: "conference:delete_regional",
+      description: "Can delete conferences limited to the user's region",
+      isSystemPermission: true,
+    },
+    {
+      slug: "users:write",
+      description: "Can create new users",
+      isSystemPermission: true,
+    },
+    {
+      slug: "users:read",
+      description: "Can view users",
+      isSystemPermission: true,
+    },
+    {
+      slug: "users:delete",
+      description: "Can delete users",
+      isSystemPermission: true,
     },
   ];
 
-  for (const p of permissionsList) {
-    await prisma.permission.upsert({
-      where: { slug: p.slug },
-      update: {},
-      create: p,
-    });
-  }
-  const ROLES_DATA = [
-    { name: "ADMIN", permissions: ["ALL"] }, // Simplified ADMIN permission for clarity
+  // --- 2. ROLES ---
+  const roles = [
+    {
+      name: "SEK_LEDELSE",
+      description: "SEK_LEDELSE",
+      permissions: [
+        "hse:write",
+        "hse:read",
+        "hse:delete",
+        "participant:write",
+        "participant:read",
+        "participant:delete",
+      ],
+    },
     {
       name: "KONKOM",
+      description: "KONKOM",
       permissions: [
         "case:read",
         "case:write",
         "case:delete",
-        "participant:read",
         "participant:write",
+        "participant:read",
         "participant:delete",
       ],
     },
     {
       name: "SEK",
+      description: "SEK",
       permissions: [
-        "participant:read",
-        "participant:write",
-        "participant:delete",
-        "hse:read",
         "hse:write",
+        "hse:read",
+        "participant:write",
+        "participant:read",
+        "participant:delete",
       ],
     },
     {
-      name: "SEK_LEDELSE",
+      name: "TEST",
+      description: null,
       permissions: [
-        "participant:read",
-        "participant:write",
-        "participant:delete",
-        "hse:read",
+        "participant:regional_read",
+        "conference:write_regional",
+        "conference:read_regional",
+        "conference:delete_regional",
+      ],
+    },
+    {
+      name: "ADMIN",
+      description: "ADMIN",
+      permissions: [
+        "case:read",
+        "case:write",
+        "case:delete",
         "hse:write",
+        "hse:read",
         "hse:delete",
+        "participant:write",
+        "participant:read",
+        "participant:delete",
+        "admin:view",
+        "conference:write",
+        "conference:read",
+        "conference:delete",
+        "users:write",
+        "users:read",
+        "users:delete",
       ],
     },
   ];
 
-  // 2. Seed Roles
-
-  const allPermissions = await prisma.permission.findMany();
-  // Map slugs to their IDs for quick connection lookups
-  const permissionSlugMap = new Map(
-    allPermissions.map((p: { slug: any; id: any }) => [p.slug, p.id])
-  );
-
-  // 3. Seed Roles using the ROLES_DATA array
-  console.log("...Seeding Roller");
-
-  for (const roleData of ROLES_DATA) {
-    let permissionsToConnect: { id: number }[] = [];
-
-    // Determine permissions based on the role name/data
-    if (roleData.name === "ADMIN") {
-      // ADMIN gets ALL permissions fetched from the database
-      permissionsToConnect = allPermissions.map((p: any) => ({ id: p.id }));
-    } else {
-      // Other roles use the slug strings defined in the array
-      const requiredSlugs = roleData.permissions as string[];
-
-      permissionsToConnect = requiredSlugs
-        .map((slug) => {
-          const id = permissionSlugMap.get(slug);
-          if (id === undefined) {
-            console.warn(
-              `[WARN] Permission slug '${slug}' not found for role ${roleData.name}. Skipping.`
-            );
-            return null;
-          }
-          return { id: id };
-        })
-        .filter((p) => p !== null) as { id: number }[];
-    }
-
-    // Upsert the role and connect permissions
-    await prisma.role.upsert({
-      where: { name: roleData.name },
-      update: {
-        // Set: [] first clears existing relations, ensuring the final state matches ROLES_DATA
-        permissions: { set: [], connect: permissionsToConnect },
-        description: roleData.name, // Optional: Set a description if needed
-      },
-      create: {
-        name: roleData.name,
-        description: roleData.name,
-        permissions: { connect: permissionsToConnect },
-      },
-    });
-  }
-
-  // 3. Seed Regions (REQUIRED for Participants)
-  console.log("...Seeding Regions");
-  const regionsData = [
-    "Agder",
-    "Innlandet",
-    "Møre og Romsdal",
-    "Nordland",
-    "Oslo",
-    "Rogaland",
-    "Troms",
-    "Telemark",
-    "Finnmark",
-    "Trøndelag",
-    "Vestfold",
-    "Vestland",
-    "Akershus",
-    "Buskerud",
-    "Østfold",
-    "Elevorganisasjonen",
-    "Individuelt Medlemsskap",
+  // --- 3. REGIONS ---
+  const regions = [
+    { name: "Agder", global: false, internal: false, parent: null },
+    { name: "Innlandet", global: false, internal: false, parent: null },
+    { name: "Møre og Romsdal", global: false, internal: false, parent: null },
+    { name: "Nordland", global: false, internal: false, parent: null },
+    { name: "Oslo", global: false, internal: false, parent: null },
+    { name: "Rogaland", global: false, internal: false, parent: null },
+    { name: "Troms", global: false, internal: false, parent: null },
+    { name: "Telemark", global: false, internal: false, parent: null },
+    { name: "Finnmark", global: false, internal: false, parent: null },
+    { name: "Trøndelag", global: false, internal: false, parent: null },
+    { name: "Vestfold", global: false, internal: false, parent: null },
+    { name: "Vestland", global: false, internal: false, parent: null },
+    { name: "Akershus", global: false, internal: false, parent: null },
+    { name: "Buskerud", global: false, internal: false, parent: null },
+    { name: "Østfold", global: false, internal: false, parent: null },
+    { name: "Elevorganisasjonen", global: false, internal: true, parent: null },
+    {
+      name: "Individuelt Medlemsskap",
+      global: false,
+      internal: true,
+      parent: null,
+    },
   ];
 
-  // We store the created regions to link organizations later
-  const regionNameMap = new Map<string, number>();
-
-  for (const name of regionsData) {
-    const region = await prisma.region.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-    regionNameMap.set(region.name, region.id); // Lagrer ID for oppslag
-  }
-
-  const ORGANIZATIONS_DATA = [
-    // Format: { name: "Organization Name", region_name: "Matching Region Name", can_vote: boolean }
-    {
-      name: "Arendal videregående skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    {
-      name: "Dahlske videregående skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
+  // --- 4. ORGANIZATIONS ---
+  const organizations = [
     {
       name: "Eilert Sundt videregående skole, avd Farsund",
-      region_name: "Agder",
-      can_vote: true,
+      canVote: true,
+      region: "Agder",
     },
-    {
-      name: "Eilert Sundt videregående skole, avd Lyngdal",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    {
-      name: "Flekkefjord videregående skole avd Flekkefjord",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    { name: "Grim skole", region_name: "Agder", can_vote: true },
-    {
-      name: "Kristiansand katedralskole Gimle",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    {
-      name: "Kvadraturen videregående skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    {
-      name: "Lillesand Videregående Skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    { name: "Mandal Videregående Skole", region_name: "Agder", can_vote: true },
-    { name: "Risør Videregående Skole", region_name: "Agder", can_vote: true },
-    {
-      name: "Sam Eyde Videregående Skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    {
-      name: "Setesdal Videregående Skole avd Valle, Hovden og Hornes",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    { name: "Songdalen Ungdomsskole", region_name: "Agder", can_vote: true },
-    {
-      name: "Steinerskolen i Kristiansand",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    { name: "Søgne videregående skole", region_name: "Agder", can_vote: true },
-    { name: "Tangen videregående skole", region_name: "Agder", can_vote: true },
-    { name: "Torridal ungdomsskole", region_name: "Agder", can_vote: true },
-    {
-      name: "Tvedestrand videregående skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    { name: "Valle Skule", region_name: "Agder", can_vote: true },
-    {
-      name: "Vennesla videregående skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
-    {
-      name: "Vågsbygd videregående skole",
-      region_name: "Agder",
-      can_vote: true,
-    },
-
-    {
-      name: "Akademiet Realfagsgymnas Sandvika",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Alværn ungdomsskole", region_name: "Akershus", can_vote: true },
-    {
-      name: "Asker videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Aursmoen skole", region_name: "Akershus", can_vote: true },
-    {
-      name: "Bakkeløkka ungdomsskole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Bjørkelangen videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Bleiker videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Drømtorp videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Dyrløkkeåsen skole", region_name: "Akershus", can_vote: true },
-    {
-      name: "Dønski videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Eidsvoll videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Fløysbonn skole", region_name: "Akershus", can_vote: true },
-    { name: "Gjettum skole", region_name: "Akershus", can_vote: true },
-    { name: "Harestua skole", region_name: "Akershus", can_vote: true },
-    {
-      name: "Haugjordet ungdomsskole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Hvam videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Lillestrøm videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Marikollen ungdomsskole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Nadderud videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Nannestad videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Nesbru videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Nesodden videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Nordbytun ungdomsskole", region_name: "Akershus", can_vote: true },
-    { name: "Ramstad skole", region_name: "Akershus", can_vote: true },
+    { name: "Grim skole", canVote: true, region: "Agder" },
+    { name: "Songdalen Ungdomsskole", canVote: true, region: "Agder" },
+    { name: "Steinerskolen i Kristiansand", canVote: true, region: "Agder" },
+    { name: "Valle Skule", canVote: true, region: "Agder" },
+    { name: "Aursmoen skole", canVote: true, region: "Akershus" },
+    { name: "Gjettum skole", canVote: true, region: "Akershus" },
+    { name: "Haugjordet ungdomsskole", canVote: true, region: "Akershus" },
+    { name: "Marikollen ungdomsskole", canVote: true, region: "Akershus" },
+    { name: "Nesbru videregående skole", canVote: true, region: "Akershus" },
+    { name: "Nordbytun ungdomsskole", canVote: true, region: "Akershus" },
     {
       name: "Roald Amundsen videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
+      canVote: true,
+      region: "Akershus",
     },
-    {
-      name: "Rosenvilde videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Rud videregående skole", region_name: "Akershus", can_vote: true },
-    {
-      name: "Rudolf Steinerskolen stiftelsen avd. Undervisning (Nesodden)",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Rælingen videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Røyken videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Sandvika videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Ski videregående skole", region_name: "Akershus", can_vote: true },
-    {
-      name: "Stabekk videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Steinerskolen på Eidsvoll",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Strømmen videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Sørumsand videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Tangenåsen ungdomsskole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    {
-      name: "Valler videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Vestby ungdomsskole", region_name: "Akershus", can_vote: true },
-    {
-      name: "Vestby videregående skole",
-      region_name: "Akershus",
-      can_vote: true,
-    },
-    { name: "Vollen ungdomsskole", region_name: "Akershus", can_vote: true },
-
-    { name: "Akademiet Drammen AS", region_name: "Buskerud", can_vote: true },
+    { name: "Rælingen videregående skole", canVote: true, region: "Akershus" },
+    { name: "Sandvika videregående skole", canVote: true, region: "Akershus" },
+    { name: "Ski videregående skole", canVote: true, region: "Akershus" },
+    { name: "Steinerskolen på Eidsvoll", canVote: true, region: "Akershus" },
+    { name: "Tangenåsen ungdomsskole", canVote: true, region: "Akershus" },
     {
       name: "Akademiet Ypsilon videregående skole AS",
-      region_name: "Buskerud",
-      can_vote: true,
+      canVote: true,
+      region: "Buskerud",
     },
+    { name: "Hokksund ungdomsskole", canVote: true, region: "Buskerud" },
     {
-      name: "Briskeby videregående skole AS",
-      region_name: "Buskerud",
-      can_vote: true,
+      name: "Båtsfjord Private videregående skole",
+      canVote: true,
+      region: "Finnmark",
+    },
+    { name: "Lakselv videregående skole", canVote: true, region: "Finnmark" },
+    { name: "Melkarn Oppvekstsenter", canVote: true, region: "Finnmark" },
+    { name: "Tana videregående skole", canVote: true, region: "Finnmark" },
+    { name: "Elverum Videregående Skole", canVote: true, region: "Innlandet" },
+    {
+      name: "Engerdal barne- og ungdomsskole",
+      canVote: true,
+      region: "Innlandet",
+    },
+    { name: "Jønsberg Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Kongsvinger Ungdomsskole", canVote: true, region: "Innlandet" },
+    {
+      name: "Lillehammer Videregående Skole avd Sør",
+      canVote: true,
+      region: "Innlandet",
+    },
+    { name: "Otta Ungdomsskole", canVote: true, region: "Innlandet" },
+    { name: "Raufoss Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Solør Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Gjøvik Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Sandnes og Bjørnevatn skole", canVote: true, region: "Finnmark" },
+    { name: "Vadsø videregående skole", canVote: true, region: "Finnmark" },
+    { name: "Vardø videregående skole", canVote: true, region: "Finnmark" },
+    { name: "Breilia skole", canVote: true, region: "Finnmark" },
+    { name: "Risør Videregående Skole", canVote: true, region: "Agder" },
+    { name: "Gausdal Videregående Skole", canVote: true, region: "Innlandet" },
+    {
+      name: "Eilert Sundt videregående skole, avd Lyngdal",
+      canVote: true,
+      region: "Agder",
+    },
+    { name: "Hadeland Videregående Skole", canVote: true, region: "Innlandet" },
+    {
+      name: "Lena-Valle Videregående Skole",
+      canVote: true,
+      region: "Innlandet",
     },
     {
       name: "Buskerud videregående skole avd. Rosthaug",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    {
-      name: "Drammen videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    {
-      name: "Eiker videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    { name: "Gol videregående skole", region_name: "Buskerud", can_vote: true },
-    { name: "Hokksund ungdomsskole", region_name: "Buskerud", can_vote: true },
-    {
-      name: "Hønefoss videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    {
-      name: "Kongsberg videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    {
-      name: "Lier videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    {
-      name: "Numedal videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    {
-      name: "Ringerike videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    {
-      name: "St. Hallvard videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-    { name: "Ål videregående skole", region_name: "Buskerud", can_vote: true },
-    {
-      name: "Åssiden videregående skole",
-      region_name: "Buskerud",
-      can_vote: true,
-    },
-
-    {
-      name: "Alta videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    { name: "Breilia skole", region_name: "Finnmark", can_vote: true },
-    {
-      name: "Båtsfjord Private videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Hammerfest videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    { name: "Honningvsåg skole", region_name: "Finnmark", can_vote: true },
-    { name: "Karasjok skole", region_name: "Finnmark", can_vote: true },
-    {
-      name: "Kirkenes videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Lakselv videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    { name: "Melkarn Oppvekstsenter", region_name: "Finnmark", can_vote: true },
-    {
-      name: "Nordkapp videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Samisk videregående skole avd. Karasjok",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Samisk videregående skole og reindriftsskole avd. Kautokeino",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Sandfallet ungdomsskole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Sandnes og Bjørnevatn skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Tana videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Vadsø videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-    {
-      name: "Vardø videregående skole",
-      region_name: "Finnmark",
-      can_vote: true,
-    },
-
-    {
-      name: "Individuelt medlem i Elevorganisasjonen",
-      region_name: "Individuelt Medlemsskap",
-      can_vote: false,
-    },
-
-    {
-      name: "Elverum Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Engerdal barne- og ungdomsskole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Gausdal Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Gjøvik Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Grue barne- og ungdomskole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Hadeland Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    { name: "Hamar Katedralskole", region_name: "Innlandet", can_vote: true },
-    {
-      name: "Jønsberg Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Kongsvinger Ungdomsskole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Lena-Valle Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Lillehammer Videregående Skole avd Nord",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Lillehammer Videregående Skole avd Sør",
-      region_name: "Innlandet",
-      can_vote: true,
+      canVote: true,
+      region: "Buskerud",
     },
     {
       name: "Nord-Gudbrandsdalen Videregående Skole avd Otta",
-      region_name: "Innlandet",
-      can_vote: true,
+      canVote: true,
+      region: "Innlandet",
     },
+    { name: "Arendal videregående skole", canVote: true, region: "Agder" },
+    { name: "Dahlske videregående skole", canVote: true, region: "Agder" },
+    { name: "Lillesand Videregående Skole", canVote: true, region: "Agder" },
+    { name: "Eiker videregående skole", canVote: true, region: "Buskerud" },
+    { name: "Sam Eyde Videregående Skole", canVote: true, region: "Agder" },
+    { name: "Tvedestrand videregående skole", canVote: true, region: "Agder" },
+    { name: "Hønefoss videregående skole", canVote: true, region: "Buskerud" },
+    {
+      name: "Flekkefjord videregående skole avd Flekkefjord",
+      canVote: true,
+      region: "Agder",
+    },
+    {
+      name: "Kristiansand katedralskole Gimle",
+      canVote: true,
+      region: "Agder",
+    },
+    { name: "Kvadraturen videregående skole", canVote: true, region: "Agder" },
+    { name: "Mandal Videregående Skole", canVote: true, region: "Agder" },
+    { name: "Søgne videregående skole", canVote: true, region: "Agder" },
+    { name: "Tangen videregående skole", canVote: true, region: "Agder" },
+    { name: "Vennesla videregående skole", canVote: true, region: "Agder" },
+    { name: "Vågsbygd videregående skole", canVote: true, region: "Agder" },
+    { name: "Torridal ungdomsskole", canVote: true, region: "Agder" },
+    { name: "Akademiet Drammen AS", canVote: true, region: "Buskerud" },
+    { name: "Lier videregående skole", canVote: true, region: "Buskerud" },
+    {
+      name: "Briskeby videregående skole AS",
+      canVote: true,
+      region: "Buskerud",
+    },
+    { name: "Drammen videregående skole", canVote: true, region: "Buskerud" },
+    { name: "Numedal videregående skole", canVote: true, region: "Buskerud" },
+    { name: "Gol videregående skole", canVote: true, region: "Buskerud" },
+    { name: "Ål videregående skole", canVote: true, region: "Buskerud" },
+    { name: "Kongsberg videregående skole", canVote: true, region: "Buskerud" },
+    { name: "Åssiden videregående skole", canVote: true, region: "Buskerud" },
+    { name: "Ringerike videregående skole", canVote: true, region: "Buskerud" },
+    {
+      name: "St. Hallvard videregående skole",
+      canVote: true,
+      region: "Buskerud",
+    },
+    {
+      name: "Akademiet Realfagsgymnas Sandvika",
+      canVote: true,
+      region: "Akershus",
+    },
+    {
+      name: "Bjørkelangen videregående skole",
+      canVote: true,
+      region: "Akershus",
+    },
+    { name: "Fløysbonn skole", canVote: true, region: "Akershus" },
+    { name: "Stabekk videregående skole", canVote: true, region: "Akershus" },
+    { name: "Alværn ungdomsskole", canVote: true, region: "Akershus" },
+    { name: "Vollen ungdomsskole", canVote: true, region: "Akershus" },
+    { name: "Bleiker videregående skole", canVote: true, region: "Akershus" },
+    { name: "Drømtorp videregående skole", canVote: true, region: "Akershus" },
+    { name: "Dyrløkkeåsen skole", canVote: true, region: "Akershus" },
+    { name: "Dønski videregående skole", canVote: true, region: "Akershus" },
+    { name: "Eidsvoll videregående skole", canVote: true, region: "Akershus" },
+    { name: "Hvam videregående skole", canVote: true, region: "Akershus" },
+    {
+      name: "Lillestrøm videregående skole",
+      canVote: true,
+      region: "Akershus",
+    },
+    { name: "Nadderud videregående skole", canVote: true, region: "Akershus" },
+    { name: "Nesodden videregående skole", canVote: true, region: "Akershus" },
+    { name: "Ramstad skole", canVote: true, region: "Akershus" },
+    {
+      name: "Rosenvilde videregående skole",
+      canVote: true,
+      region: "Akershus",
+    },
+    { name: "Rud videregående skole", canVote: true, region: "Akershus" },
+    { name: "Røyken videregående skole", canVote: true, region: "Akershus" },
+    { name: "Sandfallet ungdomsskole", canVote: true, region: "Finnmark" },
+    { name: "Strømmen videregående skole", canVote: true, region: "Akershus" },
+    { name: "Sørumsand videregående skole", canVote: true, region: "Akershus" },
+    { name: "Valler videregående skole", canVote: true, region: "Akershus" },
+    { name: "Vestby ungdomsskole", canVote: true, region: "Akershus" },
+    { name: "Vestby videregående skole", canVote: true, region: "Akershus" },
+    {
+      name: "Lillehammer Videregående Skole avd Nord",
+      canVote: true,
+      region: "Innlandet",
+    },
+    { name: "Bakkeløkka ungdomsskole", canVote: true, region: "Akershus" },
+    { name: "Nannestad videregående skole", canVote: true, region: "Akershus" },
+    { name: "Harestua skole", canVote: true, region: "Akershus" },
+    { name: "Alta videregående skole", canVote: true, region: "Finnmark" },
+    {
+      name: "Hammerfest videregående skole",
+      canVote: true,
+      region: "Finnmark",
+    },
+    { name: "Honningvsåg skole", canVote: true, region: "Finnmark" },
+    { name: "Karasjok skole", canVote: true, region: "Finnmark" },
+    { name: "Kirkenes videregående skole", canVote: true, region: "Finnmark" },
+    { name: "Nordkapp videregående skole", canVote: true, region: "Finnmark" },
+    {
+      name: "Samisk videregående skole og reindriftsskole avd. Kautokeino",
+      canVote: true,
+      region: "Finnmark",
+    },
+    {
+      name: "Samisk videregående skole avd. Karasjok",
+      canVote: true,
+      region: "Finnmark",
+    },
+    { name: "Hamar Katedralskole", canVote: true, region: "Innlandet" },
     {
       name: "Nord-Østerdal Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    { name: "Otta Ungdomsskole", region_name: "Innlandet", can_vote: true },
-    {
-      name: "Raufoss Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
+      canVote: true,
+      region: "Innlandet",
     },
     {
       name: "Ringsaker Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
+      canVote: true,
+      region: "Innlandet",
     },
-    {
-      name: "Sentrum Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Skarnes Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Solør Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Stange Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Steinerskolen på Hedemarken",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Storsteigen Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Trysil Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Valdres Vidaregåande Skule",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    {
-      name: "Vinstra Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-    { name: "Åretta Ungdomsskole", region_name: "Innlandet", can_vote: true },
-    { name: "Åsnes Ungdomsskole", region_name: "Innlandet", can_vote: true },
-    {
-      name: "Øvrebyen Videregående Skole",
-      region_name: "Innlandet",
-      can_vote: true,
-    },
-
-    {
-      name: "Atlanten videregående skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Blindheim ungdomsskole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Borgund videregående skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    { name: "Dalsfjord skule", region_name: "Møre og Romsdal", can_vote: true },
-    {
-      name: "Gjermundnes videregående skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Haram videregående skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Hustadvika videregående skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
+    { name: "Sentrum Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Stange Videregående Skole", canVote: true, region: "Innlandet" },
     {
       name: "Kolvikbakken ungdomsskole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
+      canVote: true,
+      region: "Møre og Romsdal",
     },
-    {
-      name: "Kristiansund Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Molde Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    { name: "Myklebust Skule", region_name: "Møre og Romsdal", can_vote: true },
-    { name: "Måndalen skule", region_name: "Møre og Romsdal", can_vote: true },
-    {
-      name: "Rauma videregående skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Romsdal Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
+    { name: "Myklebust Skule", canVote: true, region: "Møre og Romsdal" },
+    { name: "Måndalen skule", canVote: true, region: "Møre og Romsdal" },
     {
       name: "Skarbøvik Ungdomsskole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
+      canVote: true,
+      region: "Møre og Romsdal",
     },
-    {
-      name: "Spjelkavik Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Stranda Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Sunndal Ungdomsskole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Sunndal Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
+    { name: "Sunndal Ungdomsskole", canVote: true, region: "Møre og Romsdal" },
     {
       name: "Surnadal Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Sykkylven videregående skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Tingvoll Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Ulstein Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Volda Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
+      canVote: true,
+      region: "Møre og Romsdal",
     },
     {
       name: "Åfarnes Barne- Og Ungdomsskole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
+      canVote: true,
+      region: "Møre og Romsdal",
     },
     {
       name: "Ålesund Videregående Skole avd Volsdalsberga",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
+      canVote: true,
+      region: "Møre og Romsdal",
     },
-    {
-      name: "Ålesund videregående skole avd Fagerlia",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-    {
-      name: "Ørsta Videregående Skole",
-      region_name: "Møre og Romsdal",
-      can_vote: true,
-    },
-
-    { name: "Alstad ungdomsskole", region_name: "Nordland", can_vote: true },
-    {
-      name: "Andøy Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Aust-Lofoten Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    { name: "Ballangen skole", region_name: "Nordland", can_vote: true },
-    {
-      name: "Bodin videregående skole og maritime fagskole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Bodø Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Brønnøysund Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    { name: "Enga Skole", region_name: "Nordland", can_vote: true },
-    {
-      name: "Fauske Videregående Skole avd Vestmyra",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Grane barne- og ungdomsskole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
+    { name: "Ballangen skole", canVote: true, region: "Nordland" },
+    { name: "Enga Skole", canVote: true, region: "Nordland" },
+    { name: "Grane barne- og ungdomsskole", canVote: true, region: "Nordland" },
     {
       name: "Hadsel Videregående Skole avd Melbu",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
+    },
+    { name: "Hemnes Sentralskole", canVote: true, region: "Nordland" },
+    { name: "Henningsvær skole", canVote: true, region: "Nordland" },
+    { name: "Herøy Skole", canVote: true, region: "Nordland" },
+    { name: "Hunstad Ungdomsskole", canVote: true, region: "Nordland" },
+    { name: "Husøy Skole", canVote: true, region: "Nordland" },
+    { name: "Inndyr Skole", canVote: true, region: "Nordland" },
+    { name: "Kabelvåg Ungdomsskole", canVote: true, region: "Nordland" },
+    { name: "Kippermoen Ungdomsskole", canVote: true, region: "Nordland" },
+    { name: "Korgen Sentralskole", canVote: true, region: "Nordland" },
+    { name: "Melbu Skole", canVote: true, region: "Nordland" },
+    {
+      name: "Narvik Videregående Skole avd Oscarsborg",
+      canVote: true,
+      region: "Nordland",
+    },
+    { name: "Rønvik Skole", canVote: true, region: "Nordland" },
+    { name: "Saltdal Videregående Skole", canVote: true, region: "Nordland" },
+    { name: "Svolvær skole", canVote: true, region: "Nordland" },
+    { name: "Tverlandet Skole", canVote: true, region: "Nordland" },
+    {
+      name: "Utskarpen Barne- og Ungdomsskole",
+      canVote: true,
+      region: "Nordland",
+    },
+    { name: "Vega Barne- og Ungdomsskole", canVote: true, region: "Nordland" },
+    { name: "Apalløkka skole", canVote: true, region: "Oslo" },
+    { name: "Bjørnholt Ungdomsskole", canVote: true, region: "Oslo" },
+    { name: "Bjørnholt Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Bøler Skole", canVote: true, region: "Oslo" },
+    { name: "Ellingsrud Skole", canVote: true, region: "Oslo" },
+    { name: "Hellerud Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Hovseter Skole", canVote: true, region: "Oslo" },
+    { name: "Lambertseter grunnskole", canVote: true, region: "Oslo" },
+    { name: "Midtstuen Skole", canVote: true, region: "Oslo" },
+    { name: "Persbråten Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Ruseløkka Skole", canVote: true, region: "Oslo" },
+    { name: "Øvrebyen Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Alstad ungdomsskole", canVote: true, region: "Nordland" },
+    { name: "Andøy Videregående Skole", canVote: true, region: "Nordland" },
+    {
+      name: "Aust-Lofoten Videregående Skole",
+      canVote: true,
+      region: "Nordland",
+    },
+    {
+      name: "Bodin videregående skole og maritime fagskole",
+      canVote: true,
+      region: "Nordland",
+    },
+    { name: "Bodø Videregående Skole", canVote: true, region: "Nordland" },
+    {
+      name: "Brønnøysund Videregående Skole",
+      canVote: true,
+      region: "Nordland",
+    },
+    {
+      name: "Fauske Videregående Skole avd Vestmyra",
+      canVote: true,
+      region: "Nordland",
     },
     {
       name: "Hadsel Videregående Skole avd Stokmarknes",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
     },
-    { name: "Hemnes Sentralskole", region_name: "Nordland", can_vote: true },
-    { name: "Henningsvær skole", region_name: "Nordland", can_vote: true },
-    { name: "Herøy Skole", region_name: "Nordland", can_vote: true },
     {
       name: "Hilstad Barne- Og Ungdomsskole",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
     },
-    { name: "Hunstad Ungdomsskole", region_name: "Nordland", can_vote: true },
-    { name: "Husøy Skole", region_name: "Nordland", can_vote: true },
-    { name: "Inndyr Skole", region_name: "Nordland", can_vote: true },
-    { name: "Kabelvåg Ungdomsskole", region_name: "Nordland", can_vote: true },
-    {
-      name: "Kippermoen Ungdomsskole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    { name: "Korgen Sentralskole", region_name: "Nordland", can_vote: true },
     {
       name: "Kristen Videregående Skole Nordland",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
     },
-    { name: "Løpsmark Skole", region_name: "Nordland", can_vote: true },
-    { name: "Melbu Skole", region_name: "Nordland", can_vote: true },
+    { name: "Løpsmark Skole", canVote: true, region: "Nordland" },
     {
-      name: "Meløy videregående skole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Mosjøen Videregående Skole, avd. Kippermoen",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Mosjøen Videregående Skole, avd. Marka",
-      region_name: "Nordland",
-      can_vote: true,
+      name: "Gjermundnes videregående skole",
+      canVote: true,
+      region: "Møre og Romsdal",
     },
     {
       name: "Narvik Videregående Skole avd Frydenlund",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Narvik Videregående Skole avd Oscarsborg",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Narvik Videregående Skole avd Solhaugen",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Nord-Salten videregående skole (avd Joarkkaskåvllå og Steigen)",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
     },
     {
       name: "Polarsirkelen Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    { name: "Rønvik Skole", region_name: "Nordland", can_vote: true },
-    {
-      name: "Saltdal Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
     },
     {
       name: "Sandnessjøen Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Sortland videregående skole avd. Sortland, Kleiva og Øksnes",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    { name: "Svolvær skole", region_name: "Nordland", can_vote: true },
-    { name: "Tverlandet Skole", region_name: "Nordland", can_vote: true },
-    {
-      name: "Utskarpen Barne- og Ungdomsskole",
-      region_name: "Nordland",
-      can_vote: true,
-    },
-    {
-      name: "Vega Barne- og Ungdomsskole",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
     },
     {
       name: "Vest-Lofoten Videregående Skole",
-      region_name: "Nordland",
-      can_vote: true,
+      canVote: true,
+      region: "Nordland",
     },
-    { name: "Ørnes Skole", region_name: "Nordland", can_vote: true },
-
-    { name: "Apalløkka skole", region_name: "Oslo", can_vote: true },
-    { name: "Bjørnholt Ungdomsskole", region_name: "Oslo", can_vote: true },
+    { name: "Ørnes Skole", canVote: true, region: "Nordland" },
+    { name: "Meløy videregående skole", canVote: true, region: "Nordland" },
     {
-      name: "Bjørnholt Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
+      name: "Sortland videregående skole avd. Sortland, Kleiva og Øksnes",
+      canVote: true,
+      region: "Nordland",
     },
+    { name: "Trysil Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Lambertseter Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Åsnes Ungdomsskole", canVote: true, region: "Innlandet" },
+    { name: "Steinerskolen på Hedemarken", canVote: true, region: "Innlandet" },
+    { name: "Valdres Vidaregåande Skule", canVote: true, region: "Innlandet" },
     {
-      name: "Blindern Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
+      name: "Ørsta Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
     },
-    { name: "Brannfjell skole", region_name: "Oslo", can_vote: true },
-    { name: "Bøler Skole", region_name: "Oslo", can_vote: true },
+    { name: "Etterstad Videregående Skole", canVote: true, region: "Oslo" },
     {
-      name: "Edvard Munch Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
-    },
-    { name: "Ellingsrud Skole", region_name: "Oslo", can_vote: true },
-    {
-      name: "Elvebakken Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
+      name: "Storsteigen Videregående Skole",
+      canVote: true,
+      region: "Innlandet",
     },
     {
-      name: "Etterstad Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
+      name: "Blindheim ungdomsskole",
+      canVote: true,
+      region: "Møre og Romsdal",
     },
-    { name: "Fagerborg Skole", region_name: "Oslo", can_vote: true },
-    { name: "Foss Videregående Skole", region_name: "Oslo", can_vote: true },
-    { name: "Frydenberg Skole", region_name: "Oslo", can_vote: true },
+    {
+      name: "Borgund videregående skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Hustadvika videregående skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    { name: "Hersleb Videregående Skole", canVote: true, region: "Oslo" },
+    {
+      name: "Haram videregående skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Kristiansund Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Molde Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Romsdal Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Spjelkavik Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Stranda Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Sunndal Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Sykkylven videregående skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Tingvoll Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Ulstein Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Volda Videregående Skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    { name: "Rudolf Steinerskolen i Oslo", canVote: true, region: "Oslo" },
+    {
+      name: "Atlanten videregående skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Rauma videregående skole",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    { name: "Blindern Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Edvard Munch Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Elvebakken Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Fagerborg Skole", canVote: true, region: "Oslo" },
+    { name: "Foss Videregående Skole", canVote: true, region: "Oslo" },
     {
       name: "Fyrstikkalleén Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
+      canVote: true,
+      region: "Oslo",
     },
-    { name: "Fyrstikkalléen Skole", region_name: "Oslo", can_vote: true },
-    { name: "Groruddalen Skole", region_name: "Oslo", can_vote: true },
-    { name: "Hartvig Nissens Skole", region_name: "Oslo", can_vote: true },
-    { name: "Haugerud Skole", region_name: "Oslo", can_vote: true },
-    { name: "Hauketo Skole", region_name: "Oslo", can_vote: true },
+    { name: "Hartvig Nissens Skole", canVote: true, region: "Oslo" },
+    { name: "Haugerud Skole", canVote: true, region: "Oslo" },
+    { name: "Hauketo Skole", canVote: true, region: "Oslo" },
+    { name: "Heltberg Private Gymnas", canVote: true, region: "Oslo" },
     {
-      name: "Hellerud Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
+      name: "Narvik Videregående Skole avd Solhaugen",
+      canVote: true,
+      region: "Nordland",
     },
-    { name: "Heltberg Private Gymnas", region_name: "Oslo", can_vote: true },
-    { name: "Hersleb Videregående Skole", region_name: "Oslo", can_vote: true },
-    { name: "Holmlia Skole", region_name: "Oslo", can_vote: true },
-    { name: "Hovseter Skole", region_name: "Oslo", can_vote: true },
-    { name: "Jordal Skole", region_name: "Oslo", can_vote: true },
-    {
-      name: "Kongsskogen Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
-    },
-    { name: "Kuben Videregående Skole", region_name: "Oslo", can_vote: true },
-    {
-      name: "Lambertseter Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
-    },
-    { name: "Lambertseter grunnskole", region_name: "Oslo", can_vote: true },
-    { name: "Lofsrud Skole", region_name: "Oslo", can_vote: true },
-    { name: "Marienlyst Skole", region_name: "Oslo", can_vote: true },
-    { name: "Midtstuen Skole", region_name: "Oslo", can_vote: true },
-    { name: "Natur Videregående Skole", region_name: "Oslo", can_vote: true },
-    { name: "Nordberg Skole", region_name: "Oslo", can_vote: true },
-    { name: "Nydalen Videregående Skole", region_name: "Oslo", can_vote: true },
-    { name: "Nyskolen i Oslo", region_name: "Oslo", can_vote: true },
-    { name: "Oppsal Skole", region_name: "Oslo", can_vote: true },
-    { name: "Oslo By Steinerskole", region_name: "Oslo", can_vote: true },
-    { name: "Oslo Katedralskole", region_name: "Oslo", can_vote: true },
-    {
-      name: "Persbråten Videregående Skole",
-      region_name: "Oslo",
-      can_vote: true,
-    },
-    { name: "Ris Skole", region_name: "Oslo", can_vote: true },
-    {
-      name: "Rudolf Steinerskolen i Oslo",
-      region_name: "Oslo",
-      can_vote: true,
-    },
-    { name: "Ruseløkka Skole", region_name: "Oslo", can_vote: true },
-    { name: "Sagene Skole", region_name: "Oslo", can_vote: true },
-    { name: "Skullerud Skole", region_name: "Oslo", can_vote: true },
-    { name: "Skøyenåsen Skole", region_name: "Oslo", can_vote: true },
-    { name: "Sofienberg Skole", region_name: "Oslo", can_vote: true },
-    { name: "Sollerudstranda Skole", region_name: "Oslo", can_vote: true },
-    { name: "St. Sunniva Skole", region_name: "Oslo", can_vote: true },
-    { name: "Stasjonsfjellet skole", region_name: "Oslo", can_vote: true },
+    { name: "Holmlia Skole", canVote: true, region: "Oslo" },
+    { name: "Jordal Skole", canVote: true, region: "Oslo" },
+    { name: "Kongsskogen Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Kuben Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Lofsrud Skole", canVote: true, region: "Oslo" },
+    { name: "Marienlyst Skole", canVote: true, region: "Oslo" },
+    { name: "Natur Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Nordberg Skole", canVote: true, region: "Oslo" },
+    { name: "Nyskolen i Oslo", canVote: true, region: "Oslo" },
+    { name: "Oppsal Skole", canVote: true, region: "Oslo" },
+    { name: "Oslo By Steinerskole", canVote: true, region: "Oslo" },
+    { name: "Oslo Katedralskole", canVote: true, region: "Oslo" },
+    { name: "Ris Skole", canVote: true, region: "Oslo" },
+    { name: "Vinstra Videregående Skole", canVote: true, region: "Innlandet" },
+    { name: "Fyrstikkalléen Skole", canVote: true, region: "Oslo" },
+    { name: "Brannfjell skole", canVote: true, region: "Oslo" },
+    { name: "Groruddalen Skole", canVote: true, region: "Oslo" },
+    { name: "Frydenberg Skole", canVote: true, region: "Oslo" },
+    { name: "Åretta Ungdomsskole", canVote: true, region: "Innlandet" },
+    { name: "St. Sunniva Skole", canVote: true, region: "Oslo" },
+    { name: "Stasjonsfjellet skole", canVote: true, region: "Oslo" },
     {
       name: "Stiftelsen Den Tyske Skoleforening i Norge",
-      region_name: "Oslo",
-      can_vote: true,
+      canVote: true,
+      region: "Oslo",
     },
-    { name: "Stovner Videregående Skole", region_name: "Oslo", can_vote: true },
-    { name: "Ullern Videregående Skole", region_name: "Oslo", can_vote: true },
-    { name: "Ulsrud Videregående Skole", region_name: "Oslo", can_vote: true },
-    { name: "Vika videregående skole", region_name: "Oslo", can_vote: true },
-    { name: "Øraker skole", region_name: "Oslo", can_vote: true },
-
-    { name: "Akademiet Sandnes", region_name: "Rogaland", can_vote: true },
-    {
-      name: "Bergeland Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    { name: "Bokn Skule", region_name: "Rogaland", can_vote: true },
-    {
-      name: "Bryne Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Dalane Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    { name: "Forsand Skule", region_name: "Rogaland", can_vote: true },
-    {
-      name: "Godalen Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Haugaland Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Hetland Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Hjelmeland Ungdomsskule",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Jåttå Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Karmsund Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Kopervik Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Randaberg Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Sandnes Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Sauda Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Skeisvang Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "St. Olav Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Stavanger Katedralskole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Strand Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Vardafjell videregående skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Vågen Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Øksnevad Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    {
-      name: "Ølen Videregående Skole",
-      region_name: "Rogaland",
-      can_vote: true,
-    },
-    { name: "Øygard Ungdomsskole", region_name: "Rogaland", can_vote: true },
-
-    {
-      name: "Bamble videregående skole",
-      region_name: "Telemark",
-      can_vote: true,
-    },
-    { name: "Bø ungdomsskule", region_name: "Telemark", can_vote: true },
-    { name: "Bø videregåande skule", region_name: "Telemark", can_vote: true },
-    {
-      name: "Hjalmar Johansen videregående skole",
-      region_name: "Telemark",
-      can_vote: true,
-    },
-    {
-      name: "Kragerø videregående skole",
-      region_name: "Telemark",
-      can_vote: true,
-    },
-    { name: "Mæla ungdomsskole", region_name: "Telemark", can_vote: true },
+    { name: "Ullern Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Øraker skole", canVote: true, region: "Oslo" },
+    { name: "Bokn Skule", canVote: true, region: "Rogaland" },
+    { name: "Haugaland Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Hetland Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Jåttå Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Bø ungdomsskule", canVote: true, region: "Telemark" },
+    { name: "Kragerø videregående skole", canVote: true, region: "Telemark" },
+    { name: "Mæla ungdomsskole", canVote: true, region: "Telemark" },
     {
       name: "Nome videregående skole, avd Lunde",
-      region_name: "Telemark",
-      can_vote: true,
+      canVote: true,
+      region: "Telemark",
     },
     {
       name: "Nome videregående skole, avd Søve",
-      region_name: "Telemark",
-      can_vote: true,
-    },
-    {
-      name: "Notodden videregående skole",
-      region_name: "Telemark",
-      can_vote: true,
-    },
-    {
-      name: "Rjukan videregående skole",
-      region_name: "Telemark",
-      can_vote: true,
-    },
-    {
-      name: "Skien videregående skole",
-      region_name: "Telemark",
-      can_vote: true,
-    },
-    {
-      name: "Stiftelsen Toppidrettsgymnaset i Telemark",
-      region_name: "Telemark",
-      can_vote: true,
+      canVote: true,
+      region: "Telemark",
     },
     {
       name: "Telemark toppidrett ungdomsskole",
-      region_name: "Telemark",
-      can_vote: true,
+      canVote: true,
+      region: "Telemark",
     },
     {
       name: "Vest-Telemark videregående skole, avd Dalen og Seljord",
-      region_name: "Telemark",
-      can_vote: true,
+      canVote: true,
+      region: "Telemark",
     },
-
-    { name: "Bardu ungdomsskole", region_name: "Troms", can_vote: true },
-    {
-      name: "Bardufoss videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Breivang videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    { name: "Finnsnes ungdomsskole", region_name: "Troms", can_vote: true },
-    {
-      name: "Gibostad barne- og ungdomsskole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    { name: "Hagebyen skole", region_name: "Troms", can_vote: true },
-    { name: "Heggen videregående skole", region_name: "Troms", can_vote: true },
-    {
-      name: "Hillesøyskolen - Brensholmen skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Ishavsbyen videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Kongsbakken videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Kvaløya videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    { name: "Lavangen skole", region_name: "Troms", can_vote: true },
-    {
-      name: "Longyearbyen skole, grunnskole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Longyearbyen skole, videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    { name: "Malangen Skole", region_name: "Troms", can_vote: true },
-    {
-      name: "Nord-Troms videregående skole (avd. Nordreisa og Skjervøy)",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Nordborg videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Nordkjosbotn videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    { name: "Salangen skole", region_name: "Troms", can_vote: true },
-    { name: "Seljestad ungdomsskole", region_name: "Troms", can_vote: true },
-    {
-      name: "Senja videregående skole, avd. Finnfjordbotn",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Senja videregående skole, avd. Gibostad",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    {
-      name: "Sjøvegan videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    { name: "Sommerlyst skole", region_name: "Troms", can_vote: true },
-    { name: "Sørreisa sentralskole", region_name: "Troms", can_vote: true },
-    {
-      name: "Tromsdalen videregående skole",
-      region_name: "Troms",
-      can_vote: true,
-    },
-    { name: "Tromstun skole", region_name: "Troms", can_vote: true },
-
-    {
-      name: "Aglo Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Bybroen Videregående Skole AS",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Byåsen videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Charlottenlund Ungdomsskole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Charlottenlund Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Fosen Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Gauldal Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Grong Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    { name: "Grong ungdomsskole", region_name: "Trøndelag", can_vote: true },
+    { name: "Bardu ungdomsskole", canVote: true, region: "Troms" },
+    { name: "Gibostad barne- og ungdomsskole", canVote: true, region: "Troms" },
+    { name: "Hagebyen skole", canVote: true, region: "Troms" },
+    { name: "Kvaløya videregående skole", canVote: true, region: "Troms" },
+    { name: "Lavangen skole", canVote: true, region: "Troms" },
+    { name: "Longyearbyen skole, grunnskole", canVote: true, region: "Troms" },
+    { name: "Nordborg videregående skole", canVote: true, region: "Troms" },
+    { name: "Seljestad ungdomsskole", canVote: true, region: "Troms" },
+    { name: "Aglo Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Byåsen videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Charlottenlund Ungdomsskole", canVote: true, region: "Trøndelag" },
+    { name: "Fosen Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Gauldal Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Grong Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Grong ungdomsskole", canVote: true, region: "Trøndelag" },
     {
       name: "Guri Kunna Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      canVote: true,
+      region: "Trøndelag",
     },
-    { name: "Halsen Ungdomsskole", region_name: "Trøndelag", can_vote: true },
-    {
-      name: "Heimdal Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Inderøy Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
+    { name: "Halsen Ungdomsskole", canVote: true, region: "Trøndelag" },
+    { name: "Inderøy Videregående Skole", canVote: true, region: "Trøndelag" },
     {
       name: "Johan Bojer videregående skole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      canVote: true,
+      region: "Trøndelag",
     },
     {
       name: "Kyrksæterøra videregående skole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      canVote: true,
+      region: "Trøndelag",
     },
-    { name: "Lauvsnes Skole", region_name: "Trøndelag", can_vote: true },
-    {
-      name: "Levanger Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Lærlingrådet i Trøndelag",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    { name: "Malm skole", region_name: "Trøndelag", can_vote: true },
-    {
-      name: "Malvik Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Meldal Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Melhus Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Meråker Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    { name: "Mære Landbruksskole", region_name: "Trøndelag", can_vote: true },
-    {
-      name: "Olav Duun Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Ole Vig Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Oppdal Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Orkdal Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Røros Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Skjetlein Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    { name: "Steinerskolen Rotvoll", region_name: "Trøndelag", can_vote: true },
-    {
-      name: "Steinerskolen i Trondheim, Grunnskole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Steinkjer Montessoriskole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Steinkjer Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Strinda Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
+    { name: "Lauvsnes Skole", canVote: true, region: "Trøndelag" },
+    { name: "Malm skole", canVote: true, region: "Trøndelag" },
+    { name: "Meråker Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Mære Landbruksskole", canVote: true, region: "Trøndelag" },
+    { name: "Oppdal Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Orkdal Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Røros Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Steinkjer Montessoriskole", canVote: true, region: "Trøndelag" },
     {
       name: "Thora Storm Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Tiller Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
-    },
-    {
-      name: "Trondheim Katedralskole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      canVote: true,
+      region: "Trøndelag",
     },
     {
       name: "Trondheim international school",
-      region_name: "Trøndelag",
-      can_vote: true,
+      canVote: true,
+      region: "Trøndelag",
+    },
+    { name: "Vikhammer Ungdomsskole", canVote: true, region: "Trøndelag" },
+    { name: "Levanger Videregående Skole", canVote: true, region: "Trøndelag" },
+    {
+      name: "Nord-Troms videregående skole (avd. Nordreisa og Skjervøy)",
+      canVote: true,
+      region: "Troms",
+    },
+    { name: "Sørreisa sentralskole", canVote: true, region: "Troms" },
+    {
+      name: "Bybroen Videregående Skole AS",
+      canVote: true,
+      region: "Trøndelag",
     },
     {
-      name: "Verdal Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      name: "Senja videregående skole, avd. Finnfjordbotn",
+      canVote: true,
+      region: "Troms",
+    },
+    { name: "Sjøvegan videregående skole", canVote: true, region: "Troms" },
+    { name: "Nordkjosbotn videregående skole", canVote: true, region: "Troms" },
+    { name: "Sommerlyst skole", canVote: true, region: "Troms" },
+    { name: "Trondheim Katedralskole", canVote: true, region: "Trøndelag" },
+    {
+      name: "Steinerskolen i Trondheim, Grunnskole",
+      canVote: true,
+      region: "Trøndelag",
     },
     {
-      name: "Vikhammer Ungdomsskole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      name: "Steinkjer Videregående Skole",
+      canVote: true,
+      region: "Trøndelag",
     },
+    { name: "Strand Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Tiller Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Øygard Ungdomsskole", canVote: true, region: "Rogaland" },
+    { name: "Verdal Videregående Skole", canVote: true, region: "Trøndelag" },
     {
       name: "Ytre Namdal Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      canVote: true,
+      region: "Trøndelag",
     },
+    { name: "Steinerskolen Rotvoll", canVote: true, region: "Trøndelag" },
+    { name: "Bergeland Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Bryne Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Dalane Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Godalen Videregående Skole", canVote: true, region: "Rogaland" },
     {
-      name: "Åfjord videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      name: "Vardafjell videregående skole",
+      canVote: true,
+      region: "Rogaland",
     },
-    { name: "Årlivoll skole", region_name: "Trøndelag", can_vote: true },
-    { name: "Øya Ungdomsskole", region_name: "Trøndelag", can_vote: true },
+    { name: "Randaberg Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Sauda Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Akademiet Sandnes", canVote: true, region: "Rogaland" },
+    { name: "Vågen Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Øksnevad Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Ølen Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Hjelmeland Ungdomsskule", canVote: true, region: "Rogaland" },
+    { name: "St. Olav Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Skullerud Skole", canVote: true, region: "Oslo" },
+    { name: "Sofienberg Skole", canVote: true, region: "Oslo" },
+    { name: "Stovner Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Forsand Skule", canVote: true, region: "Rogaland" },
+    { name: "Skeisvang Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Sagene Skole", canVote: true, region: "Oslo" },
+    { name: "Ulsrud Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Sollerudstranda Skole", canVote: true, region: "Oslo" },
+    { name: "Skøyenåsen Skole", canVote: true, region: "Oslo" },
     {
-      name: "Øya Videregående Skole",
-      region_name: "Trøndelag",
-      can_vote: true,
+      name: "Hjalmar Johansen videregående skole",
+      canVote: true,
+      region: "Telemark",
     },
-
+    { name: "Salangen skole", canVote: true, region: "Troms" },
+    { name: "Bamble videregående skole", canVote: true, region: "Telemark" },
+    { name: "Bø videregåande skule", canVote: true, region: "Telemark" },
+    { name: "Meldal Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Notodden videregående skole", canVote: true, region: "Telemark" },
+    { name: "Rjukan videregående skole", canVote: true, region: "Telemark" },
+    { name: "Skien videregående skole", canVote: true, region: "Telemark" },
+    { name: "Bardufoss videregående skole", canVote: true, region: "Troms" },
+    { name: "Breivang videregående skole", canVote: true, region: "Troms" },
+    { name: "Finnsnes ungdomsskole", canVote: true, region: "Troms" },
+    { name: "Heggen videregående skole", canVote: true, region: "Troms" },
+    { name: "Ishavsbyen videregående skole", canVote: true, region: "Troms" },
+    { name: "Kongsbakken videregående skole", canVote: true, region: "Troms" },
     {
-      name: "Færder videregående skole",
-      region_name: "Vestfold",
-      can_vote: true,
+      name: "Longyearbyen skole, videregående skole",
+      canVote: true,
+      region: "Troms",
     },
+    { name: "Lærlingrådet i Trøndelag", canVote: true, region: "Trøndelag" },
     {
-      name: "Greveskogen videregående skole",
-      region_name: "Vestfold",
-      can_vote: true,
+      name: "Senja videregående skole, avd. Gibostad",
+      canVote: true,
+      region: "Troms",
     },
+    { name: "Malvik Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Tromsdalen videregående skole", canVote: true, region: "Troms" },
+    { name: "Strinda Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Tromstun skole", canVote: true, region: "Troms" },
+    { name: "Melhus Videregående Skole", canVote: true, region: "Trøndelag" },
     {
-      name: "Holmestrand videregående skole",
-      region_name: "Vestfold",
-      can_vote: true,
+      name: "Olav Duun Videregående Skole",
+      canVote: true,
+      region: "Trøndelag",
     },
+    { name: "Ole Vig Videregående Skole", canVote: true, region: "Trøndelag" },
     {
-      name: "Nøtterøy videregående skole",
-      region_name: "Vestfold",
-      can_vote: true,
+      name: "Skjetlein Videregående Skole",
+      canVote: true,
+      region: "Trøndelag",
     },
-    { name: "Revetal ungdomsskole", region_name: "Vestfold", can_vote: true },
-    {
-      name: "Sande Videregående skole",
-      region_name: "Vestfold",
-      can_vote: true,
-    },
+    { name: "Kopervik Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Malangen Skole", canVote: true, region: "Troms" },
+    { name: "Stavanger Katedralskole", canVote: true, region: "Rogaland" },
+    { name: "Åfjord videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Årlivoll skole", canVote: true, region: "Trøndelag" },
+    { name: "Øya Videregående Skole", canVote: true, region: "Trøndelag" },
+    { name: "Revetal ungdomsskole", canVote: true, region: "Vestfold" },
+    { name: "Sande Videregående skole", canVote: true, region: "Vestfold" },
     {
       name: "Steinerskolen i Vestfold - Grunnskolen på Nøtterøy",
-      region_name: "Vestfold",
-      can_vote: true,
+      canVote: true,
+      region: "Vestfold",
     },
     {
       name: "Steinerskolen i Vestfold - Slottsfjellet videregående",
-      region_name: "Vestfold",
-      can_vote: true,
+      canVote: true,
+      region: "Vestfold",
     },
-    { name: "Tjodalyng skole", region_name: "Vestfold", can_vote: true },
-
-    {
-      name: "Amalie Skram Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Arna Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Askvoll Skole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Askøy Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Austevoll Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Austrheim Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Bergen Katedralskole", region_name: "Vestland", can_vote: true },
+    { name: "Askvoll Skole", canVote: true, region: "Vestland" },
     {
       name: "Bergen Katedralskole avd Kyrre",
-      region_name: "Vestland",
-      can_vote: true,
+      canVote: true,
+      region: "Vestland",
     },
-    {
-      name: "Bømlo Videregående Skole, avd. Leite",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Bømlo Videregående skole, avd. Rubbestadneset",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Dale Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Eid Videregående Skole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Firda Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Flora Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Fusa Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Fyllingsdalen Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Førde Ungdomsskole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Førde videregående skule",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Granvin ungdomsskole", region_name: "Vestland", can_vote: true },
-    { name: "Halbrend Skole", region_name: "Vestland", can_vote: true },
-    { name: "Hauso Skole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Høyanger Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Kjøkkelvik skole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Knarvik Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Krokeide videregående skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Kvam Ungdomsskole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Kvam vidaregåande skule",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Kyrkjekrinsen ungdomsskole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Laksevåg og Bergen Maritime Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
+    { name: "Dale Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Eid Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Førde Ungdomsskole", canVote: true, region: "Vestland" },
+    { name: "Granvin ungdomsskole", canVote: true, region: "Vestland" },
+    { name: "Halbrend Skole", canVote: true, region: "Vestland" },
+    { name: "Hauso Skole", canVote: true, region: "Vestland" },
+    { name: "Kjøkkelvik skole", canVote: true, region: "Vestland" },
+    { name: "Krokeide videregående skole", canVote: true, region: "Vestland" },
+    { name: "Kvam Ungdomsskole", canVote: true, region: "Vestland" },
+    { name: "Kvam vidaregåande skule", canVote: true, region: "Vestland" },
     {
       name: "Langhaugen Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
+      canVote: true,
+      region: "Vestland",
     },
-    {
-      name: "Metis Videregående Skole AS",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Måløy Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Nordahl Grieg Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Odda Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Olsvikåsen Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Os Gymnas", region_name: "Vestland", can_vote: true },
-    { name: "Os Videregående Skole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Osterøy Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Sandsli videregående skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Slåtthaug Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Sogndal Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Sotra Videregående Skole avd Bildøy",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Sotra Videregående Skole avd Sund",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Stend Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Stord Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Strandebarm Skule", region_name: "Vestland", can_vote: true },
-    {
-      name: "Stryn Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "Sund Ungdomsskole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Tertnes Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "UWC Red Cross Nordic", region_name: "Vestland", can_vote: true },
-    { name: "Voss Gymnas", region_name: "Vestland", can_vote: true },
-    {
-      name: "Voss Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    { name: "kjøkkelvik skole", region_name: "Vestland", can_vote: true },
-    {
-      name: "Årdal Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Årstad Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-    {
-      name: "Åsane Videregående Skole",
-      region_name: "Vestland",
-      can_vote: true,
-    },
-
-    {
-      name: "Akademiet Fredrikstad AS",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    { name: "Askim ungdomsskole", region_name: "Østfold", can_vote: true },
-    {
-      name: "Askim videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    { name: "Borg videregående skole", region_name: "Østfold", can_vote: true },
-    { name: "Borge ungdomsskole", region_name: "Østfold", can_vote: true },
-    {
-      name: "Frederik II videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    {
-      name: "Glemmen videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    { name: "Gressvik ungdomsskole", region_name: "Østfold", can_vote: true },
-    {
-      name: "Greåker videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    {
-      name: "Halden videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    { name: "Haugeåsen ungdomsskole", region_name: "Østfold", can_vote: true },
-    {
-      name: "Hvaler barne- og ungdomsskole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    {
-      name: "Kalnes videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
+    { name: "UWC Red Cross Nordic", canVote: true, region: "Vestland" },
+    { name: "Voss Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Årdal Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Borge ungdomsskole", canVote: true, region: "Østfold" },
+    { name: "Halden videregående skole", canVote: true, region: "Østfold" },
+    { name: "Haugeåsen ungdomsskole", canVote: true, region: "Østfold" },
     {
       name: "Kirkebygden ungdomsskole (Våler)",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    {
-      name: "Kirkeparken videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
+      canVote: true,
+      region: "Østfold",
     },
     {
       name: "Knapstad brane- og ungdomsskole",
-      region_name: "Østfold",
-      can_vote: true,
+      canVote: true,
+      region: "Østfold",
     },
-    { name: "Kråkerøy ungdomsskole", region_name: "Østfold", can_vote: true },
-    { name: "Kvernhuset ungdomsskole", region_name: "Østfold", can_vote: true },
-    {
-      name: "Malakoff videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    { name: "Mysen ungdomsskole", region_name: "Østfold", can_vote: true },
-    {
-      name: "Mysen videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
-    },
-    { name: "Spydeberg ungdomsskole", region_name: "Østfold", can_vote: true },
-    {
-      name: "Steinerskolen i Fredrikstad",
-      region_name: "Østfold",
-      can_vote: true,
-    },
+    { name: "Kråkerøy ungdomsskole", canVote: true, region: "Østfold" },
+    { name: "Mysen videregående skole", canVote: true, region: "Østfold" },
+    { name: "Spydeberg ungdomsskole", canVote: true, region: "Østfold" },
     {
       name: "Steinerskolen i Moss, grunnskole",
-      region_name: "Østfold",
-      can_vote: true,
+      canVote: true,
+      region: "Østfold",
     },
     {
       name: "Steinerskolen i Moss, videregående skole",
-      region_name: "Østfold",
-      can_vote: true,
+      canVote: true,
+      region: "Østfold",
     },
-    { name: "Trøgstad ungdomsskole", region_name: "Østfold", can_vote: true },
-    { name: "Vestbygda ungdomsskole", region_name: "Østfold", can_vote: true },
-
+    { name: "Trøgstad ungdomsskole", canVote: true, region: "Østfold" },
+    { name: "Vestbygda ungdomsskole", canVote: true, region: "Østfold" },
     {
       name: "Distriktskomiteene i Operasjon Dagsverk",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Agder",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Akershus",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Bergen",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Buskerud",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Finnmark",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Innlandet",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Møre og Romsdal",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Nordland",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Oslo",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Oslo Sentrum",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Oslo Vest",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Oslo Øst",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Rogaland",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      canVote: false,
+      region: "Elevorganisasjonen",
     },
     {
       name: "Elevorganisasjonen i Telemark",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Troms",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Trondheim",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Trøndelag",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      canVote: false,
+      region: "Elevorganisasjonen",
     },
     {
       name: "Elevorganisasjonen i Vestfold",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Vestland",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Elevorganisasjonen i Østfold",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    {
-      name: "Generalsekretær",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      canVote: false,
+      region: "Elevorganisasjonen",
     },
     {
       name: "Gjest med innvilget talerett",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      canVote: false,
+      region: "Elevorganisasjonen",
     },
+    {
+      name: "Olsvikåsen Videregående Skole",
+      canVote: true,
+      region: "Vestland",
+    },
+    {
+      name: "Amalie Skram Videregående Skole",
+      canVote: true,
+      region: "Vestland",
+    },
+    { name: "Arna Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Austrheim Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Austevoll Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Os Gymnas", canVote: true, region: "Vestland" },
+    { name: "Bergen Katedralskole", canVote: true, region: "Vestland" },
+    { name: "Fusa Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Høyanger Videregående Skole", canVote: true, region: "Vestland" },
+    {
+      name: "Fyllingsdalen Videregående Skole",
+      canVote: true,
+      region: "Vestland",
+    },
+    { name: "Knarvik Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Metis Videregående Skole AS", canVote: true, region: "Vestland" },
+    {
+      name: "Nordahl Grieg Videregående Skole",
+      canVote: true,
+      region: "Vestland",
+    },
+    { name: "Odda Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Sogndal Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Os Videregående Skole", canVote: true, region: "Vestland" },
+    {
+      name: "Bømlo Videregående skole, avd. Rubbestadneset",
+      canVote: true,
+      region: "Vestland",
+    },
+    { name: "Osterøy Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Slåtthaug Videregående Skole", canVote: true, region: "Vestland" },
+    {
+      name: "Sotra Videregående Skole avd Bildøy",
+      canVote: true,
+      region: "Vestland",
+    },
+    {
+      name: "Sotra Videregående Skole avd Sund",
+      canVote: true,
+      region: "Vestland",
+    },
+    { name: "Stend Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Stord Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Tertnes Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Voss Gymnas", canVote: true, region: "Vestland" },
+    { name: "Årstad Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Åsane Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Firda Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Flora Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Måløy Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Generalsekretær", canVote: false, region: "Elevorganisasjonen" },
+    { name: "Stryn Videregående Skole", canVote: true, region: "Vestland" },
+    {
+      name: "Elevorganisasjonen i Oslo Øst",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    { name: "Strandebarm Skule", canVote: true, region: "Vestland" },
+    { name: "Sund Ungdomsskole", canVote: true, region: "Vestland" },
+    { name: "Kyrkjekrinsen ungdomsskole", canVote: true, region: "Vestland" },
+    { name: "Sandsli videregående skole", canVote: true, region: "Vestland" },
+    { name: "Førde videregående skule", canVote: true, region: "Vestland" },
+    {
+      name: "Elevorganisasjonen i Nordland",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Oslo Vest",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Trøndelag",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Innlandet",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Vestland",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Rogaland",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Agder",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Oslo",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Møre og Romsdal",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Oslo Sentrum",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Trondheim",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Bergen",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    { name: "Akademiet Fredrikstad AS", canVote: true, region: "Østfold" },
+    {
+      name: "Elevorganisasjonen i Buskerud",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    { name: "Askim ungdomsskole", canVote: true, region: "Østfold" },
+    {
+      name: "Elevorganisasjonen i Akershus",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Østfold",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Troms",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    {
+      name: "Elevorganisasjonen i Finnmark",
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    { name: "Færder videregående skole", canVote: true, region: "Vestfold" },
+    { name: "Malakoff videregående skole", canVote: true, region: "Østfold" },
+    { name: "Nøtterøy videregående skole", canVote: true, region: "Vestfold" },
+    { name: "Tjodalyng skole", canVote: true, region: "Vestfold" },
+    { name: "Steinerskolen i Fredrikstad", canVote: true, region: "Østfold" },
+    { name: "Askim videregående skole", canVote: true, region: "Østfold" },
+    { name: "Borg videregående skole", canVote: true, region: "Østfold" },
+    {
+      name: "Frederik II videregående skole",
+      canVote: true,
+      region: "Østfold",
+    },
+    { name: "Glemmen videregående skole", canVote: true, region: "Østfold" },
+    { name: "Greåker videregående skole", canVote: true, region: "Østfold" },
+    { name: "Kalnes videregående skole", canVote: true, region: "Østfold" },
+    {
+      name: "Kirkeparken videregående skole",
+      canVote: true,
+      region: "Østfold",
+    },
+    { name: "Mysen ungdomsskole", canVote: true, region: "Østfold" },
+    { name: "Askøy Videregående Skole", canVote: true, region: "Vestland" },
+    { name: "Hvaler barne- og ungdomsskole", canVote: true, region: "Østfold" },
+    {
+      name: "Bømlo Videregående Skole, avd. Leite",
+      canVote: true,
+      region: "Vestland",
+    },
+    { name: "Kvernhuset ungdomsskole", canVote: true, region: "Østfold" },
+    { name: "Sentralstyret", canVote: false, region: "Elevorganisasjonen" },
+    { name: "Valgkomitéen", canVote: false, region: "Elevorganisasjonen" },
+    { name: "Kontrollkomiteen", canVote: false, region: "Elevorganisasjonen" },
     {
       name: "Hovedkomiteen i Operasjon Dagsverk",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      canVote: false,
+      region: "Elevorganisasjonen",
+    },
+    { name: "Ordstyrerbordet", canVote: false, region: "Elevorganisasjonen" },
+    { name: "Referenter", canVote: false, region: "Elevorganisasjonen" },
+    {
+      name: "Holmestrand videregående skole",
+      canVote: true,
+      region: "Vestfold",
     },
     {
-      name: "Kontrollkomiteen",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      name: "Stiftelsen Toppidrettsgymnaset i Telemark",
+      canVote: true,
+      region: "Telemark",
+    },
+    { name: "Asker videregående skole", canVote: true, region: "Akershus" },
+    {
+      name: "Rudolf Steinerskolen stiftelsen avd. Undervisning (Nesodden)",
+      canVote: true,
+      region: "Akershus",
     },
     {
-      name: "Ordstyrerbordet",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
-    },
-    { name: "Referenter", region_name: "Elevorganisasjonen", can_vote: false },
-    {
-      name: "Sentralstyret",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      name: "Hillesøyskolen - Brensholmen skole",
+      canVote: true,
+      region: "Troms",
     },
     {
-      name: "Valgkomitéen",
-      region_name: "Elevorganisasjonen",
-      can_vote: false,
+      name: "Individuelt medlem i Elevorganisasjonen",
+      canVote: false,
+      region: "Individuelt Medlemsskap",
     },
+    {
+      name: "Nord-Salten videregående skole (avd Joarkkaskåvllå og Steigen)",
+      canVote: true,
+      region: "Nordland",
+    },
+    {
+      name: "Flekkefjord Vgs studiested Kvinesdal",
+      canVote: true,
+      region: "Agder",
+    },
+    { name: "Hareid ungdomsskole", canVote: true, region: "Møre og Romsdal" },
+    { name: "Manndalen ungdomsskole", canVote: true, region: "Troms" },
+    { name: "Skoleskipet Gann", canVote: true, region: "Rogaland" },
+    { name: "Mosjøen Videregående Skole", canVote: true, region: "Nordland" },
+    { name: "Heimdal Videregående Skole", canVote: true, region: "Trøndelag" },
+    {
+      name: "Charlottenlund Videregående Skole",
+      canVote: true,
+      region: "Trøndelag",
+    },
+    {
+      name: "Laksevåg og Bergen Maritime Videregående Skole",
+      canVote: true,
+      region: "Vestland",
+    },
+    {
+      name: "Ålesund videregående skole avd Fagerlia",
+      canVote: true,
+      region: "Møre og Romsdal",
+    },
+    {
+      name: "Setesdal Videregående Skole avd Valle, Hovden og Hornes",
+      canVote: true,
+      region: "Agder",
+    },
+    { name: "Sandnes Videregående Skole", canVote: true, region: "Rogaland" },
+    { name: "Nydalen Videregående Skole", canVote: true, region: "Oslo" },
+    { name: "Vika videregående skole", canVote: true, region: "Oslo" },
   ];
-  // 4. Seed Organizations (Optional example)
-  console.log("...Seeding Organizations");
-  // Just adding one example organization to the first region (Agder)
-  for (const org of ORGANIZATIONS_DATA) {
-    const regionId = regionNameMap.get(org.region_name);
 
-    if (!regionId) {
-      console.warn(
-        `[ADVARSEL] Hopper over organisasjon ${org.name}: Region '${org.region_name}' ble ikke funnet.`
-      );
-      continue;
-    }
+  // --- 5. WHITELIST USERS ---
+  const users = [
+    {
+      email: "birk@elev.no",
+      name: null,
+      role: "ADMIN",
+      region: "Elevorganisasjonen",
+    },
+    {
+      email: "birk.monsen@gmail.com",
+      name: null,
+      role: "TEST",
+      region: "Oslo",
+    },
+    { email: "bmo006.email@gmail.com", name: null, role: null, region: null },
+  ];
 
-    await prisma.organization.upsert({
-      where: { name: org.name },
+  // --- SEED LOGIC ---
+
+  // 1. Permissions
+  console.log("Seeding Permissions...");
+  for (const p of permissions) {
+    await prisma.permission.upsert({
+      where: { slug: p.slug },
+      update: { isSystemPermission: p.isSystemPermission },
+      create: p,
+    });
+  }
+
+  // 2. Roles
+  console.log("Seeding Roles...");
+  for (const r of roles) {
+    await prisma.role.upsert({
+      where: { name: r.name },
       update: {
-        canVote: org.can_vote,
-        regionId: regionId, // ✅ Knytter til Region ID
+        permissions: {
+          set: [], // Clear old
+          connect: r.permissions.map((slug) => ({ slug })),
+        },
       },
       create: {
-        name: org.name,
-        canVote: org.can_vote,
-        regionId: regionId,
+        name: r.name,
+        description: r.description,
+        permissions: {
+          connect: r.permissions.map((slug) => ({ slug })),
+        },
       },
     });
   }
-  // 5. Seed/Update YOUR User
-  const adminRoleReference = await prisma.role.findUnique({
-    where: { name: "ADMIN" },
-  });
-  const adminRoleId = adminRoleReference?.id; // Bruk optional chaining for sikkerhet
-  const eoRegionId = regionNameMap.get("Elevorganisasjonen");
 
-  if (!adminRoleId) {
-    throw new Error(
-      "Kritisk feil: Fant ikke ADMIN-rollen i databasen. Sjekk trinn 2."
-    );
+  // 3. Regions
+  console.log("Seeding Regions...");
+  for (const r of regions) {
+    await prisma.region.upsert({
+      where: { name: r.name },
+      update: {},
+      create: {
+        name: r.name,
+        global: r.global,
+        internal: r.internal,
+      },
+    });
+  }
+  // Link parents in second pass
+  for (const r of regions) {
+    if (r.parent) {
+      await prisma.region.update({
+        where: { name: r.name },
+        data: {
+          parent: { connect: { name: r.parent } },
+        },
+      });
+    }
   }
 
-  const myEmail = "birk@elev.no";
-  console.log(`...Seeding User: ${myEmail}`);
+  // 4. Organizations
+  console.log("Seeding Organizations...");
+  for (const o of organizations) {
+    if (!o.region) {
+      console.warn(`Skipping org ${o.name} because it has no region.`);
+      continue;
+    }
+    await prisma.organization.upsert({
+      where: { name: o.name },
+      update: { canVote: o.canVote },
+      create: {
+        name: o.name,
+        canVote: o.canVote,
+        region: { connect: { name: o.region } },
+      },
+    });
+  }
 
-  await prisma.whitelist.upsert({
-    where: { email: myEmail },
-    update: {
-      // ✅ KORREKT: Bruk den garanterte ID-en
-      role: { connect: { id: adminRoleId } },
-      // ✅ KORREKT: Håndter region ID som kan være undefined
-      region: eoRegionId ? { connect: { id: eoRegionId } } : undefined,
-    },
-    create: {
-      email: myEmail,
-      role: { connect: { id: adminRoleId } },
-      region: eoRegionId ? { connect: { id: eoRegionId } } : undefined,
-    },
-  });
-
-  console.log("...Seeding start date");
-  await prisma.config.upsert({
-    where: { key: "START_DATE" },
-    update: { value: "2025-01-01" },
-    create: {
-      key: "START_DATE",
-      value: "2025-01-01",
-    },
-  });
-
-  console.log("✅ Seeding finished.");
+  // 5. Users
+  console.log("Seeding Users...");
+  for (const u of users) {
+    await prisma.whitelist.upsert({
+      where: { email: u.email },
+      update: { name: u.name },
+      create: {
+        email: u.email,
+        name: u.name,
+        role: u.role ? { connect: { name: u.role } } : undefined,
+        region: u.region ? { connect: { name: u.region } } : undefined,
+      },
+    });
+  }
 }
+
 main()
   .catch((e) => {
     console.error(e);

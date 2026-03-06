@@ -9,6 +9,12 @@ declare module "next-auth" {
       role?: string;
       permissions: string[];
       regionId: number;
+      organizedConferences: {
+        conferenceId: number;
+        conferenceShortname: string;
+        role: string;
+        permissions: string[];
+      }[];
     } & DefaultSession["user"];
   }
 }
@@ -17,7 +23,14 @@ declare module "@auth/core/jwt" {
   interface JWT {
     role?: string;
     permissions: string[];
+    regionId?: number;
     error?: string;
+    organizedConferences: {
+      conferenceId: number;
+      conferenceShortname: string;
+      role: string;
+      permissions: string[];
+    }[];
   }
 }
 
@@ -47,26 +60,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const userRecord = await prisma.whitelist.findUnique({
           where: { email },
           include: {
+            conferenceOrganizer: {
+              include: {
+                role: { include: { permissions: true } },
+                conference: { select: { id: true, shortname: true } },
+              },
+            },
             role: { include: { permissions: true } },
             region: { select: { id: true } },
           },
         });
-
-        console.log("User Record Found:", !!userRecord);
 
         if (!userRecord) {
           token.permissions = ["FORCE_SIGNOUT"];
           token.role = "GUEST";
           return token;
         }
-
         token.role = userRecord.role?.name;
         token.permissions =
           userRecord.role?.permissions.map((p) => p.slug) ?? [];
         token.email = userRecord.email;
-        token.regionId = userRecord.region;
-        delete token.error; // Clear error if they are back in whitelist
+        token.regionId = userRecord.region?.id;
+
+        token.organizedConferences = userRecord.conferenceOrganizer.map(
+          (org) => ({
+            conferenceId: org.conference.id,
+            conferenceShortname: org.conference.shortname,
+            role: org.role.name,
+            permissions: org.role.permissions.map((p) => p.slug),
+          }),
+        );
+
+        delete token.error;
       } catch (error) {
+        console.error(error);
         return { ...token, error: "DatabaseError" };
       }
 
@@ -79,6 +106,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.permissions = (token.permissions as string[]) || [];
         session.user.email = token.email as string;
         session.user.regionId = token.regionId as number;
+
+        session.user.organizedConferences = token.organizedConferences || [];
       }
       return session;
     },

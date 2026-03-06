@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const session = await requireAuth();
   const permissions = session?.user?.permissions || [];
-  const regionId = session?.user?.regionId?.id || null;
+  const regionId = session?.user?.regionId || null;
 
   const conferences = await getAvailableConferences();
 
@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   const canDeleteRegional = permissions.includes("conference:delete_regional");
 
   return (
-    <div className="bg-gray-50 min-h-screen flex md:flex-row">
+    <div className="bg-gray-50 min-h-screen flex md:flex-row flex-col">
       <NavbarAuthorized />
 
       <main className="flex-grow p-8 max-w-7xl mx-auto">

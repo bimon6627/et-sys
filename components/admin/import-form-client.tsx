@@ -1,10 +1,11 @@
+// components/admin/import-form-client.tsx
 "use client";
 
 import { useState } from "react";
 import {
   importParticipants,
   syncFromLegacySystem,
-} from "@/app/actions/import-actions"; // 💡 Import sync action
+} from "@/app/actions/import-actions";
 import {
   BiUpload,
   BiLoaderAlt,
@@ -12,8 +13,18 @@ import {
   BiCheckCircle,
   BiErrorCircle,
 } from "react-icons/bi";
+import { useRouter } from "next/navigation";
 
-export default function ImportFormClient() {
+interface ImportFormProps {
+  conferenceId: string;
+  showAutoSync: boolean; // <--- New prop to control visibility
+}
+
+export default function ImportFormClient({
+  conferenceId,
+  showAutoSync,
+}: ImportFormProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<{
     message: string;
     success: boolean;
@@ -23,20 +34,18 @@ export default function ImportFormClient() {
 
   // --- HANDLER: AUTO SYNC ---
   const handleAutoSync = async () => {
-    if (
-      !confirm(
-        "Er du sikker på at du vil starte automatisk import fra det gamle systemet?",
-      )
-    ) {
-      return;
-    }
+    console.log("Thisisatest");
 
     setStatus(null);
     setIsSubmitting(true);
 
     try {
-      const result = await syncFromLegacySystem();
+      const result = await syncFromLegacySystem(conferenceId);
       setStatus(result);
+
+      if (result.success) {
+        setTimeout(() => router.refresh(), 1500);
+      }
     } catch (error: any) {
       setStatus({
         success: false,
@@ -51,15 +60,18 @@ export default function ImportFormClient() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setStatus(null);
 
     const formData = new FormData(e.currentTarget);
+    formData.append("conferenceId", conferenceId);
 
     try {
-      const result = await importParticipants(formData);
+      const result = await importParticipants(formData, conferenceId);
       setStatus(result);
 
       if (result.success) {
         setFileKey(Date.now());
+        setTimeout(() => router.refresh(), 1500);
       }
     } catch (error: any) {
       setStatus({
@@ -94,45 +106,50 @@ export default function ImportFormClient() {
         </div>
       )}
 
-      {/* 2. AUTO SYNC CARD (Primary Option) */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-blue-100 rounded-full text-blue-700">
-            <BiCloudDownload className="size-6" />
+      {/* 2. AUTO SYNC CARD (Conditional Rendering) */}
+      {showAutoSync && (
+        <>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-blue-100 rounded-full text-blue-700">
+                <BiCloudDownload className="size-6" />
+              </div>
+              <h2 className="text-xl font-bold text-blue-900">
+                Automatisk Import
+              </h2>
+            </div>
+            <p className="text-blue-800 text-sm mb-6 max-w-lg">
+              Henter data automatisk fra det gamle systemet og legger dem til i{" "}
+              <span className="font-bold">{conferenceId}</span>.
+            </p>
+            <button
+              type="button"
+              onClick={handleAutoSync}
+              disabled={isSubmitting}
+              className={`flex items-center justify-center w-full sm:w-auto gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-md hover:bg-blue-700 transition-all ${
+                isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+              }`}
+            >
+              {isSubmitting ? (
+                <BiLoaderAlt className="animate-spin size-5" />
+              ) : (
+                <BiCloudDownload className="size-5" />
+              )}
+              {isSubmitting ? "Synkroniserer..." : "Start Synkronisering"}
+            </button>
           </div>
-          <h2 className="text-xl font-bold text-blue-900">Automatisk Import</h2>
-        </div>
-        <p className="text-blue-800 text-sm mb-6 max-w-lg">
-          Henter data automatisk fra registrer.elevtinget.no og synkroniserer
-          med databasen
-        </p>
-        <button
-          type="button"
-          onClick={handleAutoSync}
-          disabled={isSubmitting}
-          className={`flex items-center justify-center w-full sm:w-auto gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-md hover:bg-blue-700 transition-all ${
-            isSubmitting ? "opacity-75 cursor-not-allowed" : ""
-          }`}
-        >
-          {isSubmitting ? (
-            <BiLoaderAlt className="animate-spin size-5" />
-          ) : (
-            <BiCloudDownload className="size-5" />
-          )}
-          {isSubmitting ? "Synkroniserer..." : "Start Synkronisering"}
-        </button>
-      </div>
 
-      {/* DIVIDER */}
-      <div className="relative flex py-2 items-center">
-        <div className="flex-grow border-t border-gray-300"></div>
-        <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-bold uppercase tracking-widest">
-          Eller last opp manuelt
-        </span>
-        <div className="flex-grow border-t border-gray-300"></div>
-      </div>
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-bold uppercase tracking-widest">
+              Eller last opp manuelt
+            </span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+        </>
+      )}
 
-      {/* 3. MANUAL UPLOAD CARD (Fallback Option) */}
+      {/* 3. MANUAL UPLOAD CARD */}
       <form
         onSubmit={handleSubmit}
         className="space-y-6 p-6 bg-white border border-gray-200 rounded-xl shadow-sm"
@@ -151,7 +168,7 @@ export default function ImportFormClient() {
             htmlFor="excelFile"
             className="block text-sm font-medium text-gray-700 mb-2"
           >
-            Velg .xlsx fil fra din maskin:
+            Velg .xlsx fil for <strong>{conferenceId}</strong>:
           </label>
           <input
             key={fileKey}

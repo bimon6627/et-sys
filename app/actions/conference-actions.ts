@@ -46,28 +46,58 @@ export async function getAvailableConferences() {
   const canReadAll = user.permissions.includes("conference:read");
   const canReadRegional = user.permissions.includes("conference:read_regional");
 
-  if (!canReadAll && !canReadRegional) return [];
-
-  try {
-    const whereClause: any = {};
-
-    if (canReadAll) {
-      // Admins see everything
-    } else if (canReadRegional) {
-      // Regional users see: Their region OR Global conferences
-      whereClause.OR = [{ regionId: user.regionId }, { regionId: null }];
-    }
-
-    const conferences = await prisma.conference.findMany({
-      where: whereClause,
+  // 1. GLOBAL ADMIN: Short-circuit early if they can see everything
+  if (canReadAll) {
+    return await prisma.conference.findMany({
       include: {
         region: { select: { name: true, id: true } },
         _count: { select: { participants: true } },
       },
       orderBy: [{ active: "desc" }, { startDate: "desc" }],
     });
+  }
 
-    return conferences;
+  // 2. FETCH "LOCAL" ACCESS (The Pivot Table)
+  // Find all conference IDs where this user is listed as staff
+  const organizerRecords = await prisma.conferenceOrganizer.findMany({
+    where: { userId: user.id },
+    select: { conferenceId: true },
+  });
+  const organizedConferenceIds = organizerRecords.map((r) => r.conferenceId);
+
+  // 3. BUILD THE "OR" CONDITIONS
+  const orConditions: any[] = [];
+
+  // Condition A: Explicitly assigned conferences (Temp Users / Helpers)
+  if (organizedConferenceIds.length > 0) {
+    orConditions.push({ id: { in: organizedConferenceIds } });
+  }
+
+  // Condition B: Regional Access (County Leaders)
+  if (canReadRegional && user.regionId) {
+    orConditions.push(
+      { regionId: user.regionId }, // My Region
+      { regionId: null }, // National Conferences
+    );
+  }
+
+  // 4. SECURITY CHECK: If no conditions met, return empty
+  if (orConditions.length === 0) {
+    return [];
+  }
+
+  // 5. EXECUTE QUERY
+  try {
+    return await prisma.conference.findMany({
+      where: {
+        OR: orConditions,
+      },
+      include: {
+        region: { select: { name: true, id: true } },
+        _count: { select: { participants: true } },
+      },
+      orderBy: [{ active: "desc" }, { startDate: "desc" }],
+    });
   } catch (error) {
     console.error("Error fetching conferences:", error);
     return [];

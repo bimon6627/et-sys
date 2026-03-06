@@ -1,6 +1,7 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 generator client {
@@ -10,12 +11,14 @@ generator client {
 // --- GLOBAL SETTINGS (Shared across all conferences) ---
 
 model Whitelist {
-  id              Int           @id @default(autoincrement())
-  email           String        @unique
-  roleId          Int?   
-  role            Role?         @relation(fields: [roleId], references: [id])
-  regionId        Int?
-  region          Region?       @relation("UserToRegion", fields: [regionId], references: [id])
+  id                Int           @id @default(autoincrement())
+  email             String        @unique
+  name              String?
+  profilePictureURL String?
+  roleId            Int?   
+  role              Role?         @relation(fields: [roleId], references: [id])
+  regionId          Int?
+  region            Region?       @relation("UserToRegion", fields: [regionId], references: [id])
   
   reportedIncidents HMS[]       @relation("ReporterToHMS")
   hmsActions        HMS_actions[] @relation("UserToHMSAction")
@@ -45,6 +48,8 @@ model Region {
   name          String @unique
   global      Boolean @default(false)
 
+  internal       Boolean @default(false)
+
   parentId      Int?
   parent        Region?   @relation("RegionHierarchy", fields: [parentId], references: [id])
   children      Region[]  @relation("RegionHierarchy")
@@ -52,8 +57,7 @@ model Region {
   participants  Participant[] @relation("ParticipantToRegion")
   organizations Organization[] @relation("OrganizationToRegion")
   users         Whitelist[] @relation("UserToRegion")
-  
-  // 💡 Relation to Conference (A region can host multiple conferences)
+
   conferences   Conference[]
 }
 
@@ -65,12 +69,6 @@ model Organization {
   regionId        Int
   region          Region @relation("OrganizationToRegion", fields: [regionId], references: [id])
   participants    Participant[] @relation("ParticipantToOrganization")
-}
-
-model Config {
-  id    Int    @id @default(autoincrement())
-  key   String @unique
-  value String
 }
 
 // --- CONFERENCE SPECIFIC MODELS ---
@@ -89,19 +87,49 @@ model Conference {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  registrationActive  Boolean @default(false)
+  registrationFormId  Int
+  registrationForm    ConferenceRegistrationForm @relation(fields: [registrationFormId], references: [id])
+  
+  requireRegistrationContract Boolean @default(false)
+
+  //agenda              AgendaItem[]
+
+
+  //Saksliste Sak[]
+  //Epost     bool
+  //Hotell    bool
+  //Defaultrom  Hotellrom
+  //Hotellromtyper  Hotellrom[]
+  //Kontaktinfo hotell
+  //Kontaktinfo
+  //
+
+
   // Data belonging to this specific conference
   participants Participant[]
   formReplies  FormReply[]
   cases        Case[]
   hmsIncidents HMS[]
 
-  // 💡 Optional: Regional Conference Support
   global      Boolean @default(false)
   regionId    Int?
   region      Region? @relation(fields: [regionId], references: [id])
 
   conferenceRoles ConferenceRole[]
   conferenceOrganizers ConferenceOrganizer[]
+}
+
+model ConferenceRegistrationForm {
+  id            Int @id @default(autoincrement())
+  isTemplate    Boolean @default(false)
+  conferences Conference[]
+
+  // -- Required fields --
+
+  otherFields   Json?
+  
+
 }
 
 model ConferenceRole {
@@ -123,6 +151,8 @@ model ConferenceOrganizer {
   role      ConferenceRole    @relation(fields: [roleId], references: [id])
   roleId Int
 }
+
+// --- PARTICIPANT MODELS ---
 
 model Participant {
   id              Int   @id @default(autoincrement())
@@ -160,6 +190,8 @@ model Participant {
 
   docs_approved_once       Boolean @default(false)
   docs_approved_twice      Boolean @default(false)
+
+  other_fields    Json?
   
   room_number     String?
   notes           String?
@@ -288,4 +320,32 @@ enum Gender {
 enum ParticipantType {
   DELEGATE
   OBSERVER
+}
+
+// --- UTILITY MODELS ---
+
+model Config {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+model Log {
+  id        Int @id @default(autoincrement())
+  level     LogLevel
+  message   String
+  metadata  Json?
+  userId    Int?
+  conferenceId  Int?
+
+  createdAt DateTime @default(now())
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+  FATAL
+  DEBUG
 }

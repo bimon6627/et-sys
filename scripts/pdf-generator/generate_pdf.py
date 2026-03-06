@@ -170,32 +170,29 @@ def generate_pdf(document_title="Dokument"):
         changeType = row_data[3] or ""
         place = row_data[4] or ""
         change = row_data[5] or ""
-        recommendationCodeRaw = row_data[6] or ""
-        recommendationCode = recommendationCodeRaw.split(" ")[0]
+        recommendation = row_data[6] or ""
 
         voteFor = int(row_data[7]) if row_data[7] is not None else 0
         voteAgainst = int(row_data[8]) if row_data[8] is not None else 0
         voteAbstain = int(row_data[9]) if row_data[9] is not None else 0
         voteTally = f"({voteFor}-{voteAgainst}-{voteAbstain})"
 
-        recommendation = ""
-        if recommendationCode == "A":
-            recommendation = f"Innstilt avvist {voteTally}"
-        elif recommendationCode == "AF":
-            recco_text = row_data[10] if len(row_data) > 10 else "?"
-            recommendation = f"Innstilt avvist til fordel for {recco_text} {voteTally}"
-        elif recommendationCode == "V":
-            recommendation = f"Innstilt vedtatt {voteTally}"
-        elif recommendationCode == "IFV":
-            recommendation = f"Ingen forslag til vedtak {voteTally}"
-        elif recommendationCode == "IF":
-            recommendation = f"Ingen forslag til vedtak ({voteFor} for, {voteAgainst} mot, {voteAbstain} avholdende)"
-        elif recommendationCode == "IRH":
-            recommendation = "Ikke realitetsbehandlet"
-        elif recommendationCode == "I":
-            recommendation = "Ivaretatt"
-        elif recommendationCode == "O":
-            recommendation = f"Oversendt til Landsstyret {voteTally}"
+        recommendationText = ""
+
+        match recommendation:
+            case "Innstilt avvist til fordel for":
+                alternative = row_data[10] if len(row_data) > 10 else "FORMATFEIL!"
+                recommendationText = f"{recommendation} {alternative} {voteTally}"
+                break
+            case "Ikke realitetsbehandlet":
+                recommendationText = recommendation
+                break
+            case "Ingen forslag til vedtak":
+                recommendationText = f"{recommendation} ({voteFor} for, {voteAgainst} mot, {voteAbstain} avholdende)"
+                break
+            case _:
+                recommendationText = f"{recommendation} {voteTally}"
+                break
 
         changeParagraphs = change.split("\n")
         if changeParagraphs:
@@ -233,7 +230,7 @@ def generate_pdf(document_title="Dokument"):
                 [checkbox_for, checkbox_mot]
             ],
             [changeType],
-            [[Paragraph("Innstilt:", style=styles['Normal']), Paragraph(recommendation, style=styles['forslag'])]],
+            [[Paragraph("Innstilt:", style=styles['Normal']), Paragraph(recommendationText, style=styles['forslag'])]],
         ]
 
         t_style = TableStyle([

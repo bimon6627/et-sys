@@ -2,16 +2,23 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getParticipantsGroupedByRegion } from "@/app/actions/participant-actions";
 import ParticipantsDashboard from "@/components/participants/participants-dashboard";
-import NavbarAuthorized from "@/components/authorized/authorized-navbar";
 import { Metadata } from "next";
+import getUserPermissions from "@/components/ts/get-user-permissions";
 
 export const metadata: Metadata = {
   title: "Deltakere",
 };
 
-export default async function ParticipantsPage() {
+interface PageProps {
+  params: Promise<{ conferenceId: string }>;
+}
+
+export default async function ParticipantsPage({ params }: PageProps) {
+  // 1. Await params to access the dynamic route slug
+  const { conferenceId } = await params;
+
   const session = await auth();
-  const permissions = session?.user?.permissions || [];
+  const permissions = getUserPermissions(conferenceId, session?.user);
 
   // Security Check: Require READ permission
   if (
@@ -23,18 +30,18 @@ export default async function ParticipantsPage() {
     redirect("/unauthorized");
   }
 
-  // Fetch all data structured by region
-  const groupedParticipants = await getParticipantsGroupedByRegion();
+  // 2. Pass the conferenceId to the data fetcher
+  const groupedParticipants =
+    await getParticipantsGroupedByRegion(conferenceId);
 
   // Determine write permissions for the client component
   const canWrite = permissions.includes("participant:write");
 
   return (
     <div className="flex md:flex-row flex-col">
-      <NavbarAuthorized />
-      <div className="p-8 max-w-7xl mx-auto w-full">
-        <h1 className="text-3xl font-bold mb-6">Deltakeroversikt</h1>
+      <div className="max-w-7xl mx-auto w-full">
         <ParticipantsDashboard
+          conferenceId={conferenceId} // 3. Pass it down to the client component
           groupedData={groupedParticipants}
           canWrite={canWrite}
         />
